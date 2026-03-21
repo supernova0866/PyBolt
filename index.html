@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyBolt IDE</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/brython@3.14.0/brython.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/brython@3.14.0/brython_stdlib.js"></script>
+<script src="engine/verifier.js"></script>
+<script src="engine/autocomplete.js"></script>
+<script src="engine/storage.js"></script>
+<style>
+:root {
+  --bg:#0b0d13; --bg2:#11141c; --bg3:#181c28; --bg4:#1f2436;
+  --panel:#0f111a; --border:#252a40;
+  --accent:#6c5ce7; --accentH:#7d6ef0;
+  --teal:#00cec9; --pink:#fd79a8; --yellow:#fdcb6e;
+  --green:#55efc4; --red:#ff5f74;
+  --text:#dde4ff; --text2:#7a85a8; --text3:#3d4466;
+  --mono:'JetBrains Mono',monospace; --ui:'Syne',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+[draggable]{cursor:default!important;}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);display:flex;flex-direction:column}
+
+/* TITLEBAR */
+.titlebar{height:46px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:200}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;letter-spacing:-.3px;white-space:nowrap;user-select:none}
+.logo-mark{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),var(--pink));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 10px rgba(108,92,231,.45);flex-shrink:0}
+.logo em{color:var(--accent);font-style:normal}
+.tab-strip{display:flex;align-items:center;gap:2px;flex:1;overflow:hidden;min-width:0}
+.t-tab{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:background .12s,color .12s,border-color .12s;flex-shrink:0}
+.t-tab:hover{background:var(--bg3);color:var(--text)}
+.t-tab.active{background:var(--bg3);border-color:var(--border);color:var(--text)}
+.t-tab.snip-tab{color:var(--yellow)}
+.t-tab.snip-tab.active{border-color:rgba(253,203,110,.5);background:rgba(253,203,110,.07)}
+.tab-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;display:none}
+.t-tab.dirty .tab-dot{display:block}
+.tab-x{width:13px;height:13px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;opacity:0;transition:opacity .12s;cursor:pointer;flex-shrink:0}
+.t-tab:hover .tab-x{opacity:.5}
+.tab-x:hover{opacity:1!important;background:var(--bg4)}
+.btn-new{width:26px;height:26px;border-radius:6px;background:transparent;border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .12s;flex-shrink:0;margin-left:2px}
+.btn-new:hover{background:var(--bg3);color:var(--text)}
+.tb-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.icon-btn{width:30px;height:30px;border-radius:7px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .12s}
+.icon-btn:hover{color:var(--text);background:var(--bg4)}
+.run-btn{display:flex;align-items:center;gap:7px;padding:7px 16px;background:linear-gradient(135deg,var(--accent),#4a3cbf);border:none;border-radius:8px;color:#fff;font-family:var(--ui);font-weight:700;font-size:13px;cursor:pointer;transition:all .15s;box-shadow:0 2px 14px rgba(108,92,231,.35);white-space:nowrap}
+.run-btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(108,92,231,.5);filter:brightness(1.1)}
+.run-btn:active{transform:none}
+.run-btn.running{background:linear-gradient(135deg,#ff5f74,#b0002e);box-shadow:0 2px 14px rgba(255,95,116,.35)}
+.icon-btn#verifyBtn:hover{color:var(--green);}
+
+/* WORKSPACE */
+.workspace{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:196px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease}
+.sidebar.hidden{width:0}
+.sb-sec{padding:10px 12px 3px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3)}
+.sb-file{display:flex;align-items:center;gap:7px;padding:6px 12px;margin:1px 6px;font-family:var(--mono);font-size:11.5px;color:var(--text2);cursor:pointer;border-radius:4px;transition:all .1s}
+.sb-file:hover{background:var(--bg3);color:var(--text)}
+.sb-file.active{background:var(--bg4);color:var(--accent)}
+.sb-div{height:1px;background:var(--border);margin:7px 10px}
+.sb-keys{padding:10px 14px 14px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:2;margin-top:auto}
+kbd{font-family:var(--mono);font-size:9.5px;padding:1px 5px;background:var(--bg4);border-radius:3px;border:1px solid var(--border);color:var(--text2)}
+
+/* CONTENT */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.editor-wrap{flex:1;overflow:hidden;position:relative}
+
+/* CODEMIRROR */
+.CodeMirror{height:100%!important;font-family:var(--mono)!important;font-size:13.5px!important;line-height:1.75!important;background:var(--bg)!important;color:#cdd6f4!important}
+.CodeMirror-scroll{padding-bottom:20px}
+.CodeMirror-gutters{background:var(--bg2)!important;border-right:1px solid var(--border)!important}
+.CodeMirror-linenumber{color:var(--text3)!important;font-size:11.5px;padding-right:8px}
+.CodeMirror-activeline-background{background:rgba(108,92,231,.055)!important}
+.CodeMirror-cursor{border-left:2px solid var(--accent)!important}
+.CodeMirror-selected{background:rgba(108,92,231,.22)!important}
+.cm-keyword{color:#cba6f7!important} .cm-def{color:#89dceb!important} .cm-variable{color:#cdd6f4!important}
+.cm-string,.cm-string-2{color:#a6e3a1!important} .cm-comment{color:#585b70!important;font-style:italic}
+.cm-number{color:#fab387!important} .cm-operator{color:#89b4fa!important}
+.cm-builtin{color:#f38ba8!important} .cm-atom{color:#fab387!important}
+.cm-error{color:var(--red)!important;background:rgba(255,95,116,.1)!important}
+.error-line{background:rgba(255,95,116,.07)!important}
+
+/* SNIPPETS VIEW */
+.snip-view{display:none;flex:1;overflow-y:auto;padding:26px 30px;background:var(--bg)}
+.snip-view.on{display:block}
+.sv-title{font-size:21px;font-weight:800;margin-bottom:4px}
+.sv-sub{font-size:12.5px;color:var(--text2);margin-bottom:22px}
+.sv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.sn-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:border-color .15s,transform .15s,box-shadow .15s}
+.sn-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,92,231,.2)}
+.sn-head{padding:13px 14px 10px;display:flex;align-items:center;gap:10px}
+.sn-ico{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.sn-title{font-size:13.5px;font-weight:700;color:var(--text)}
+.sn-desc{font-size:11px;color:var(--text2);margin-top:1px}
+.sn-badge{margin-left:auto;flex-shrink:0;font-family:var(--mono);font-size:9.5px;padding:2px 7px;border-radius:10px;font-weight:600}
+.sn-pre{padding:9px 14px 13px;font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--text2);border-top:1px solid var(--border);max-height:76px;overflow:hidden;position:relative}
+.sn-pre::after{content:'';position:absolute;bottom:0;left:0;right:0;height:26px;background:linear-gradient(transparent,var(--bg2))}
+.sn-open{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;border-top:1px solid var(--border);font-size:12px;font-weight:700;color:var(--accent);background:transparent;border-left:none;border-right:none;border-bottom:none;cursor:pointer;width:100%;font-family:var(--ui);transition:background .12s,color .12s}
+.sn-open:hover{background:rgba(108,92,231,.12);color:var(--text)}
+
+/* GHOST TEXT */
+.pb-ghost{color:rgba(205,214,244,.28);font-family:var(--mono);font-size:13.5px;line-height:1.75;pointer-events:none;user-select:none;letter-spacing:0;}
+.find-bar{display:none;position:absolute;top:8px;right:12px;z-index:50;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;gap:6px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.find-bar.on{display:flex}
+.find-input{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 8px;outline:none;width:155px}
+.find-input:focus{border-color:var(--accent)}
+.find-btn{width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .1s}
+.find-btn:hover{background:var(--bg4);color:var(--text)}
+
+/* RESIZE */
+.resize-h{height:4px;cursor:ns-resize;background:transparent;flex-shrink:0;transition:background .15s}
+.resize-h:hover,.resize-h.drag{background:var(--accent)}
+
+/* OUTPUT PANEL */
+.out-panel{height:236px;flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-direction:column;transition:height .15s}
+.out-panel.collapsed{height:35px;overflow:hidden}
+.out-header{display:flex;align-items:center;height:35px;border-bottom:1px solid var(--border);flex-shrink:0}
+.o-tab{padding:0 15px;height:35px;display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;user-select:none}
+.o-tab:hover{color:var(--text)}
+.o-tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.err-badge{font-size:9px;padding:1px 5px;border-radius:8px;background:var(--red);color:#fff;display:none}
+.err-badge.on{display:inline}
+.out-acts{margin-left:auto;display:flex;gap:3px;padding-right:8px}
+.o-ico{width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .1s}
+.o-ico:hover{color:var(--text);background:var(--bg3)}
+.out-body{flex:1;overflow:auto;padding:10px 14px}
+#output{font-family:var(--mono);font-size:12.5px;line-height:1.75;white-space:pre-wrap;word-break:break-all}
+.o-out{color:var(--text)} .o-err{color:var(--red)} .o-info{color:var(--text2);font-style:italic} .o-ok{color:var(--green)}
+#varsList{font-family:var(--mono);font-size:11.5px;color:var(--text2)}
+.vr{display:flex;gap:12px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border)}
+.vn{color:var(--accent);min-width:90px;flex-shrink:0} .vt{font-size:10px;min-width:55px;flex-shrink:0} .vv{color:var(--text);opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#histList{font-family:var(--mono);font-size:11.5px}
+.hr{padding:8px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.hr:hover{background:var(--bg3)}
+.hm{display:flex;justify-content:space-between;margin-bottom:3px}
+.hn{color:var(--accent)} .ht{color:var(--text3);font-size:10px} .hp{color:var(--text2);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* STATUS */
+.statusbar{height:22px;flex-shrink:0;background:linear-gradient(90deg,var(--accent),#4a3cbf);display:flex;align-items:center;padding:0 12px;gap:16px}
+.st{font-family:var(--mono);font-size:10.5px;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:4px}
+.st b{color:#fff;font-weight:600} .st-r{margin-left:auto}
+
+/* TOAST */
+.toast-stack{position:fixed;bottom:36px;right:18px;z-index:9999;display:flex;flex-direction:column-reverse;gap:6px;pointer-events:none;}
+.toast-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-family:var(--mono);font-size:12px;color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.5);transform:translateY(8px);opacity:0;transition:transform .2s ease,opacity .2s ease;display:flex;align-items:center;gap:8px;max-width:280px;}
+.toast-item.on{transform:translateY(0);opacity:1;}
+.toast-item.out{transform:translateY(8px);opacity:0;}
+.toast-count{font-size:10px;color:var(--text3);font-style:italic;font-weight:400;white-space:nowrap;}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:var(--bg2)} ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px} ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.mob{display:none;position:fixed;inset:0;z-index:99999;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px}
+@media(max-width:600px){.mob{display:flex}}
+.mob-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 28px;background:var(--accent);color:#fff;border-radius:10px;font-family:var(--ui);font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(108,92,231,.4);margin-top:6px;}
+.mob-btn:active{filter:brightness(.9);}
+.mob-hint{font-family:var(--mono);font-size:10.5px;color:var(--text3);}
+
+/* ── FILE TREE ── */
+.tree-folder{user-select:none;}
+.tree-folder-row{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;font-family:var(--mono);font-size:11.5px;color:var(--text2);cursor:pointer;border-radius:4px;margin:1px 4px;transition:all .1s;}
+.tree-folder-row:hover{background:var(--bg3);color:var(--text);}
+.tree-chevron{font-size:9px;width:10px;flex-shrink:0;transition:transform .15s;display:inline-block;}
+.tree-folder.open>.tree-folder-row .tree-chevron{transform:rotate(90deg);}
+.tree-children{padding-left:14px;display:none;}
+.tree-folder.open>.tree-children{display:block;}
+.tree-file{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-family:var(--mono);font-size:11.5px;color:var(--text2);cursor:pointer;border-radius:4px;margin:1px 4px;transition:all .1s;}
+.tree-file:hover{background:var(--bg3);color:var(--text);}
+.tree-file.active{background:var(--bg4);color:var(--accent);}
+.tree-file .dirty-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);flex-shrink:0;display:none;margin-left:auto;}
+.tree-file.dirty .dirty-dot{display:block;}
+.sb-toolbar{display:flex;align-items:center;padding:4px 8px 2px;gap:2px;}
+.sb-tool{width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .1s;}
+.sb-tool:hover{background:var(--bg3);color:var(--text);}
+
+/* ── DRAG & DROP ── */
+.tree-file[draggable]{cursor:default;}
+.tree-file.dragging{opacity:.3;pointer-events:none;}
+.tree-file.drag-over{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(108,92,231,.08);}
+.tree-folder-row.drag-over{background:rgba(108,92,231,.15);outline:2px dashed var(--accent);outline-offset:-2px;border-radius:4px;}
+.drop-root-zone{min-height:22px;margin:2px 8px;border:2px dashed transparent;border-radius:6px;transition:all .15s;font-family:var(--mono);font-size:10px;color:transparent;display:flex;align-items:center;justify-content:center;letter-spacing:.5px;}
+.drop-root-zone.drag-over{border-color:var(--teal);background:rgba(0,206,201,.07);color:var(--text3);}
+
+/* ── WARNING MODAL ── */
+.modal-warning{font-size:12px;color:var(--red);background:rgba(255,95,116,.1);border:1px solid rgba(255,95,116,.25);border-radius:6px;padding:8px 10px;margin-bottom:14px;line-height:1.5;}
+
+/* ── IDE CONSOLE ── */
+.console-line{display:flex;gap:8px;align-items:baseline;padding:2px 0;font-family:var(--mono);font-size:11.5px;line-height:1.6;}
+.console-level{font-size:9.5px;font-weight:700;letter-spacing:.6px;flex-shrink:0;width:38px;}
+.console-level.info{color:var(--teal);}
+.console-level.warn{color:var(--yellow);}
+.console-level.error{color:var(--red);}
+.console-msg{color:var(--text2);}
+
+/* ── SETTINGS ── */
+.settings-anchor{padding:6px 8px 8px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:2px;}
+.settings-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:6px;background:transparent;border:none;color:var(--text2);font-family:var(--ui);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;text-align:left;line-height:1;}
+.settings-btn:hover{background:var(--bg3);color:var(--text);}
+.settings-btn.active{color:var(--accent);}
+.settings-btn svg{flex-shrink:0;opacity:.8;}
+.settings-overlay{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;}
+.settings-overlay.open{display:flex;}
+.settings-panel{background:var(--bg3);border:1px solid var(--border);border-radius:14px;min-width:360px;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;}
+.settings-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.settings-title{font-size:15px;font-weight:800;color:var(--text);}
+.settings-close{width:26px;height:26px;border-radius:6px;background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .1s;}
+.settings-close:hover{background:var(--bg4);color:var(--text);}
+.settings-body{padding:14px 22px 20px;display:flex;flex-direction:column;gap:2px;}
+.settings-section{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:10px 0 4px;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;transition:background .1s;}
+.settings-row:hover{background:var(--bg4);}
+.settings-info{display:flex;flex-direction:column;gap:2px;}
+.settings-info span{font-size:13px;font-weight:600;color:var(--text);}
+.settings-info small{font-size:11px;color:var(--text3);}
+.toggle{position:relative;width:38px;height:21px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-slider{position:absolute;inset:0;background:var(--bg4);border-radius:21px;cursor:pointer;transition:.2s;}
+.toggle-slider::before{content:'';position:absolute;width:15px;height:15px;left:3px;top:3px;background:var(--text3);border-radius:50%;transition:.2s;}
+.toggle input:checked+.toggle-slider{background:var(--accent);}
+.toggle input:checked+.toggle-slider::before{transform:translateX(17px);background:#fff;}
+
+/* ── FILE PICKER ── */
+.file-picker{position:fixed;z-index:8000;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.55);opacity:0;transform:scale(.96) translateY(-4px);transition:opacity .12s,transform .12s;pointer-events:none;}
+.file-picker.open{opacity:1;transform:scale(1) translateY(0);pointer-events:all;}
+.fp-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--text2);cursor:pointer;transition:all .1s;}
+.fp-item:hover{background:var(--bg4);color:var(--text);}
+.fp-new{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;font-family:var(--ui);font-size:12px;font-weight:700;color:var(--accent);cursor:pointer;transition:all .1s;border-top:1px solid var(--border);margin-top:3px;padding-top:10px;}
+.fp-new:hover{background:rgba(108,92,231,.12);}
+
+
+.fctx-menu{
+  position:fixed;z-index:9100;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:9px;padding:4px;min-width:180px;
+  box-shadow:0 8px 28px rgba(0,0,0,.55);
+  opacity:0;transform:scale(.95) translateY(-3px);
+  transition:opacity .1s,transform .1s;pointer-events:none;user-select:none;
+}
+.fctx-menu.open{opacity:1;transform:scale(1) translateY(0);pointer-events:all;}
+.fctx-item{display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:5px;font-family:var(--ui);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:background .1s,color .1s;}
+.fctx-item:hover{background:var(--bg4);color:var(--text);}
+.fctx-item.danger:hover{background:rgba(255,95,116,.12);color:var(--red);}
+.fctx-sep{height:1px;background:var(--border);margin:3px 5px;}
+.move-current{background:rgba(0,206,201,.06);}
+.move-current:hover{background:rgba(0,206,201,.06)!important;color:var(--text2)!important;cursor:default!important;}
+
+/* ── LOADING OVERLAY ── */
+.loader-overlay{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;transition:opacity .4s ease;}
+.loader-overlay.hidden{opacity:0;pointer-events:none;}
+.loader-logo{font-family:var(--ui);font-size:26px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px;}
+.loader-logo svg{filter:drop-shadow(0 0 10px var(--accent));}
+.loader-bar-wrap{width:320px;height:4px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#a29bfe);border-radius:4px;}
+@keyframes loaderFlow{
+  0%  {width:0%;}
+  100%{width:97%;}
+}
+.loader-bar.flowing{animation:loaderFlow 3s linear forwards;}
+.loader-text{font-family:var(--mono);font-size:11.5px;color:var(--text3);min-height:18px;text-align:center;max-width:340px;line-height:1.5;transition:opacity .25s ease;}
+.modal-overlay{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:22px 24px;min-width:320px;box-shadow:0 16px 48px rgba(0,0,0,.6);}
+.modal-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px;}
+.modal-input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 10px;outline:none;margin-bottom:14px;}
+.modal-input:focus{border-color:var(--accent);}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+.modal-btn{padding:7px 16px;border-radius:7px;font-family:var(--ui);font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .12s;}
+.modal-btn.cancel{background:var(--bg4);color:var(--text2);}
+.modal-btn.cancel:hover{color:var(--text);}
+.modal-btn.confirm{background:var(--accent);color:#fff;}
+.modal-btn.confirm:hover{filter:brightness(1.1);}
+
+.ctx-menu{
+  position:fixed; z-index:9000;
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:10px; padding:5px;
+  min-width:200px;
+  box-shadow:0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.3);
+  opacity:0; transform:scale(.96) translateY(-4px);
+  transition:opacity .12s, transform .12s;
+  pointer-events:none; user-select:none;
+}
+.ctx-menu.open{opacity:1;transform:scale(1) translateY(0);pointer-events:all;}
+.ctx-item{
+  display:flex; align-items:center; gap:10px;
+  padding:7px 10px; border-radius:6px;
+  font-family:var(--ui); font-size:12.5px; font-weight:600;
+  color:var(--text2); cursor:pointer;
+  transition:background .1s, color .1s;
+}
+.ctx-item:hover{background:var(--bg4);color:var(--text);}
+.ctx-item.danger:hover{background:rgba(255,95,116,.12);color:var(--red);}
+.ctx-item.accent:hover{background:rgba(108,92,231,.15);color:var(--accent);}
+.ctx-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.ctx-label{flex:1;}
+.ctx-kbd{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-left:auto;}
+.ctx-sep{height:1px;background:var(--border);margin:4px 6px;}
+.ctx-section{padding:5px 10px 3px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);}
+</style>
+</head>
+<body>
+<!-- LOADING OVERLAY -->
+<div class="loader-overlay" id="loaderOverlay">
+  <div class="loader-logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    PyBolt
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
+    <div class="loader-text" id="loaderText">Setting things up...</div>
+  </div>
+</div>
+
+<div class="mob">
+  <div class="logo-mark" style="width:48px;height:48px;font-size:22px;border-radius:12px;box-shadow:0 0 20px rgba(108,92,231,.5);">⚡</div>
+  <div style="font-weight:800;font-size:22px;letter-spacing:-.3px;">Py<em style="color:var(--accent);font-style:normal;">Bolt</em></div>
+  <div style="font-family:var(--mono);font-size:12px;color:var(--text2);max-width:260px;line-height:1.7;">PyBolt IDE is designed for desktop.<br>Use a larger screen for the full IDE.</div>
+  <a class="mob-btn" href="explainerlite.html">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Open Loop Explainer
+  </a>
+  <div class="mob-hint">mobile-optimised · no install needed</div>
+</div>
+
+<!-- TITLEBAR -->
+<div class="titlebar">
+  <div class="logo"><div class="logo-mark">⚡</div>Py<em>Bolt</em></div>
+  <div class="tab-strip" id="tabStrip"></div>
+  <div class="tb-right">
+    <button class="icon-btn" title="Toggle sidebar (Ctrl+B)" onclick="toggleSidebar()">☰</button>
+    <button class="icon-btn" id="saveBtn" title="Save workspace" onclick="manualSave()" style="opacity:.4;cursor:not-allowed;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    </button>
+    <button class="icon-btn" title="Find (Ctrl+F)" onclick="toggleFind()">⌕</button>
+    <button class="icon-btn" title="Download file" onclick="downloadFile()">↓</button>
+    <button class="icon-btn" id="verifyBtn" title="Verify code" onclick="manualVerify()">✔</button>
+    <button class="run-btn" id="runBtn" onclick="isRunning ? stopRun() : runCode()">
+      <span id="runIcon">▶</span><span id="runLabel">Run</span>
+    </button>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+  <div class="sidebar" id="sidebar">
+    <div style="display:flex;align-items:center;padding:8px 10px 2px;gap:4px;flex-shrink:0;">
+      <div class="sb-sec" style="padding:0;flex:1">Explorer</div>
+      <button class="sb-tool" title="New File" onclick="newTab()">+📄</button>
+      <button class="sb-tool" title="New Folder" onclick="newFolder()">+📁</button>
+    </div>
+    <div id="fileList" style="flex:1;overflow-y:auto;min-height:0;"></div>
+    <div class="sb-div"></div>
+    <div class="sb-keys">
+      <kbd>Ctrl+Enter</kbd> Run<br>
+      <kbd>Ctrl+/</kbd> Comment<br>
+      <kbd>Ctrl+B</kbd> Sidebar<br>
+      <kbd>Ctrl+F</kbd> Find
+    </div>
+    <div class="settings-anchor">
+      <button class="settings-btn" id="explainerBtn" onclick="toggleExplainer()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Explainer
+      </button>
+      <button class="settings-btn" id="snipSideBtn" onclick="goSnipTab()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Snippets
+      </button>
+      <button class="settings-btn" onclick="openSettings()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- EDITOR -->
+    <div class="editor-wrap" id="editorWrap">
+      <textarea id="editorEl"></textarea>
+      <div class="find-bar" id="findBar">
+        <input class="find-input" id="findInput" placeholder="Find…" oninput="doFind()" onkeydown="findKey(event)">
+        <button class="find-btn" onclick="findNext()">↓</button>
+        <button class="find-btn" onclick="findPrev()">↑</button>
+        <button class="find-btn" onclick="toggleFind()">✕</button>
+      </div>
+    </div>
+
+    <!-- SNIPPETS VIEW -->
+    <div class="snip-view" id="snipView">
+      <div class="sv-title">⚡ Snippets</div>
+      <div class="sv-sub">Click any card to open the snippet in a new editor tab</div>
+      <div class="sv-grid" id="snipGrid"></div>
+    </div>
+
+    <!-- RESIZE -->
+    <div class="resize-h" id="resizeH"></div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="out-panel" id="outPanel">
+      <div class="out-header">
+        <div class="o-tab active" id="otOutput" onclick="switchOut('output')">Output <span class="err-badge" id="errBadge">!</span></div>
+        <div class="o-tab" id="otVars"    onclick="switchOut('vars')">Variables</div>
+        <div class="o-tab" id="otHist"    onclick="switchOut('hist')">History</div>
+        <div class="o-tab" id="otConsole" onclick="switchOut('console')">IDE Console</div>
+        <div class="out-acts">
+          <button class="o-ico" title="Clear output" onclick="clearOutput()">🗑</button>
+          <button class="o-ico" id="panToggle" onclick="toggleOut()">▼</button>
+        </div>
+      </div>
+      <div class="out-body" id="bOutput" ><div id="output"></div></div>
+      <div class="out-body" id="bVars"    style="display:none"><div id="varsList"><span style="color:var(--text3);font-style:italic">Run code to see variables</span></div></div>
+      <div class="out-body" id="bHist"    style="display:none"><div id="histList"><span style="color:var(--text3);font-style:italic">No runs yet</span></div></div>
+      <div class="out-body" id="bConsole" style="display:none"><div id="ideConsole"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div class="statusbar">
+  <div class="st">⚡ <b>PyBolt</b></div>
+  <div class="st">🐍 Python 3 · Brython</div>
+  <div class="st">Ln <b id="stLn">1</b> Col <b id="stCol">1</b></div>
+  <div class="st" id="stSel" style="display:none">Sel <b id="stSelN">0</b></div>
+  <div class="st st-r" id="stMsg"></div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-section">Edit</div>
+  <div class="ctx-item" onclick="ctxAction('run')">
+    <span class="ctx-icon">▶</span>
+    <span class="ctx-label">Run</span>
+    <span class="ctx-kbd">Ctrl+Enter</span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('comment')">
+    <span class="ctx-icon">#</span>
+    <span class="ctx-label">Toggle Comment</span>
+    <span class="ctx-kbd">Ctrl+/</span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('indent')">
+    <span class="ctx-icon">→</span>
+    <span class="ctx-label">Indent</span>
+    <span class="ctx-kbd">Tab</span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('dedent')">
+    <span class="ctx-icon">←</span>
+    <span class="ctx-label">Dedent</span>
+    <span class="ctx-kbd">Shift+Tab</span>
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-section">Selection</div>
+  <div class="ctx-item" onclick="ctxAction('selectall')">
+    <span class="ctx-icon">⬜</span>
+    <span class="ctx-label">Select All</span>
+    <span class="ctx-kbd">Ctrl+A</span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('selectline')">
+    <span class="ctx-icon">▬</span>
+    <span class="ctx-label">Select Line</span>
+    <span class="ctx-kbd"></span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('copy')" id="ctxCopy">
+    <span class="ctx-icon">⎘</span>
+    <span class="ctx-label">Copy</span>
+    <span class="ctx-kbd">Ctrl+C</span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('paste')">
+    <span class="ctx-icon">📋</span>
+    <span class="ctx-label">Paste</span>
+    <span class="ctx-kbd">Ctrl+V</span>
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-section">File</div>
+  <div class="ctx-item" onclick="ctxAction('newtab')">
+    <span class="ctx-icon">＋</span>
+    <span class="ctx-label">New Tab</span>
+    <span class="ctx-kbd"></span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('save')">
+    <span class="ctx-icon">💾</span>
+    <span class="ctx-label">Save</span>
+    <span class="ctx-kbd"></span>
+  </div>
+  <div class="ctx-item" onclick="ctxAction('download')">
+    <span class="ctx-icon">↓</span>
+    <span class="ctx-label">Download File</span>
+    <span class="ctx-kbd"></span>
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxAction('clearoutput')">
+    <span class="ctx-icon">🗑</span>
+    <span class="ctx-label">Clear Output</span>
+    <span class="ctx-kbd"></span>
+  </div>
+</div>
+
+<!-- FILE CONTEXT MENU -->
+<div class="fctx-menu" id="fctxMenu">
+  <div class="fctx-item" id="fctxOpen"      onclick="fctxAction('open')">📄 <span>Open</span></div>
+  <div class="fctx-item" id="fctxRename"    onclick="fctxAction('rename')">✏️ <span>Rename</span></div>
+  <div class="fctx-item" id="fctxMove" style="justify-content:space-between">📂 <span style="flex:1">Move to…</span><span style="font-size:9px;color:var(--text3)">▶</span></div>
+  <div class="fctx-item" id="fctxCopyPath"  onclick="fctxAction('copypath')">🔗 <span>Copy Path</span></div>
+  <div class="fctx-item" id="fctxDuplicate" onclick="fctxAction('duplicate')">⎘ <span>Duplicate</span></div>
+  <div class="fctx-sep" id="fctxFolderSep"></div>
+  <div class="fctx-item" id="fctxNewFile"   onclick="fctxAction('newfile')">+📄 <span>New File Here</span></div>
+  <div class="fctx-sep"></div>
+  <div class="fctx-item danger" id="fctxDelete" onclick="fctxAction('delete')">🗑 <span>Delete</span></div>
+</div>
+
+<!-- MOVE SUBMENU -->
+<div class="fctx-menu" id="moveMenu">
+  <div id="moveMenuList"></div>
+</div>
+
+<!-- EXPLAINER OVERLAY — opens explainer.html in a new tab, no iframe -->
+
+<!-- RENAME MODAL -->
+<div class="modal-overlay" id="renameModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Rename File</div>
+    <input class="modal-input" id="modalInput" placeholder="filename.py" onkeydown="modalKey(event)">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmModal()">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="settings-overlay" id="settingsOverlay" onclick="e=>e.target===this&&closeSettings()">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <div class="settings-title">⚙ Settings</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="settings-close" id="reloadEnginesBtn" title="Reload engine files" onclick="reloadEngines()" style="width:auto;padding:0 8px;gap:5px;font-size:11px;font-weight:700;color:var(--text2);">
+          <svg id="reloadIcon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Reload Engines
+        </button>
+        <button class="settings-close" onclick="closeSettings()">✕</button>
+      </div>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">Engines</div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <span>Verifier</span>
+          <small>Pre-run syntax &amp; mistake checker</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="settingVerifier" checked onchange="saveSetting('verifier',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <span>Autocomplete</span>
+          <small>Keyword &amp; snippet suggestions</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="settingAutocomplete" checked onchange="saveSetting('autocomplete',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-section">Editor</div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <span>Line numbers</span>
+          <small>Show line numbers in editor</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="settingLineNums" checked onchange="saveSetting('lineNums',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <span>Auto Mirror</span>
+          <small>Auto-close brackets, quotes (), [], {}, "", ''</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="settingAutoBracket" checked onchange="saveSetting('autoBracket',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-section">Storage</div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <span>Auto-save</span>
+          <small>Auto-saves every 10s if edits made, and on every run. Files, folders &amp; structure included.</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="settingAutosave" checked onchange="saveSetting('autosave',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row" style="gap:8px;">
+        <div class="settings-info">
+          <span>Workspace</span>
+          <small id="storageSavedAt">Not saved yet</small>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="modal-btn confirm" style="font-size:11px;padding:5px 12px;" onclick="manualSave()">Save now</button>
+          <button class="modal-btn cancel" style="font-size:11px;padding:5px 12px;color:var(--red);" onclick="clearStorage()">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FILE PICKER (shown when + tab is clicked) -->
+<div class="file-picker" id="filePicker">
+  <div id="fpList"></div>
+  <div class="fp-new" onclick="fpCreate()">＋ Create new file</div>
+</div>
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-title" id="confirmTitle">Are you sure?</div>
+    <div class="modal-warning" id="confirmWarning"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="modal-btn confirm" style="background:var(--red)" id="confirmOkBtn" onclick="confirmOk()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// SNIPPET DATA
+// ════════════════════════════════════════
+const SNIPS = [
+  { key:'hello', icon:'👋', label:'Hello World', desc:'Input, output, f-strings', tag:'basic', tc:'#a6e3a1',
+    code:`# Hello World\nprint("Hello, World!")\nname = "PyBolt"\nprint(f"Welcome to {name}!")\n\nnums = [1, 2, 3, 4, 5]\nprint("Sum:", sum(nums))\nprint("Max:", max(nums))\n` },
+
+  { key:'fib', icon:'🔢', label:'Fibonacci', desc:'Generator + memoised recursive', tag:'algo', tc:'#89b4fa',
+    code:`# Fibonacci\ndef fibonacci():\n    a, b = 0, 1\n    while True:\n        yield a\n        a, b = b, a + b\n\nfib = fibonacci()\nprint("Sequence:", [next(fib) for _ in range(15)])\n\nfrom functools import lru_cache\n\n@lru_cache(maxsize=None)\ndef fib_r(n):\n    if n < 2: return n\n    return fib_r(n-1) + fib_r(n-2)\n\nprint("fib(30) =", fib_r(30))\n` },
+
+  { key:'class', icon:'🏗️', label:'Class & Inheritance', desc:'OOP with properties & dunder methods', tag:'oop', tc:'#cba6f7',
+    code:`class Shape:\n    def __init__(self, color="white"):\n        self.color = color\n    def area(self): raise NotImplementedError\n    def __repr__(self): return f"{type(self).__name__}(color={self.color!r}, area={self.area():.2f})"\n\nclass Circle(Shape):\n    def __init__(self, r, **kw): super().__init__(**kw); self.r = r\n    def area(self):\n        import math; return math.pi * self.r ** 2\n\nclass Rect(Shape):\n    def __init__(self, w, h, **kw): super().__init__(**kw); self.w=w; self.h=h\n    def area(self): return self.w * self.h\n\nshapes = [Circle(5, color="red"), Rect(4, 6, color="blue"), Circle(3)]\nfor s in shapes: print(s)\nprint("Largest:", max(shapes, key=lambda s: s.area()))\n` },
+
+  { key:'decorator', icon:'🎀', label:'Decorators', desc:'Timer, retry, and memoize patterns', tag:'advanced', tc:'#fab387',
+    code:`import functools, time\n\ndef timer(func):\n    @functools.wraps(func)\n    def wrapper(*a, **kw):\n        t = time.perf_counter()\n        r = func(*a, **kw)\n        print(f"  {func.__name__}: {(time.perf_counter()-t)*1000:.2f}ms")\n        return r\n    return wrapper\n\ndef retry(n=3):\n    def dec(func):\n        @functools.wraps(func)\n        def wrapper(*a, **kw):\n            for i in range(n):\n                try: return func(*a, **kw)\n                except Exception as e: print(f"  attempt {i+1} failed: {e}")\n            raise RuntimeError("All retries exhausted")\n        return wrapper\n    return dec\n\n@timer\ndef slow_sum(n): return sum(range(n))\n\nprint(slow_sum(1_000_000))\n` },
+
+  { key:'listcomp', icon:'📋', label:'Comprehensions', desc:'List, dict, set, and generator exprs', tag:'pythonic', tc:'#a6e3a1',
+    code:`# Comprehensions\nevens = [x for x in range(20) if x % 2 == 0]\nprint("Evens:", evens)\n\nmatrix = [[1,2,3],[4,5,6],[7,8,9]]\nflat = [n for row in matrix for n in row]\nprint("Flat:", flat)\n\nsq = {x: x**2 for x in range(1, 9)}\nprint("Squares:", sq)\n\nremainders = {x % 7 for x in range(50)}\nprint("Unique mod-7:", sorted(remainders))\n\ntotal = sum(x**2 for x in range(1_000_000))\nprint(f"Sum of 1M squares: {total:,}")\n` },
+
+  { key:'generator', icon:'♾️', label:'Generators & Iterators', desc:'Lazy sequences and infinite streams', tag:'iter', tc:'#89dceb',
+    code:`# Generators\ndef countdown(n):\n    while n >= 0: yield n; n -= 1\n\nprint("Countdown:", list(countdown(5)))\n\ndef primes():\n    def is_prime(n):\n        return n > 1 and all(n % i for i in range(2, int(n**.5)+1))\n    n = 2\n    while True:\n        if is_prime(n): yield n\n        n += 1\n\ngen = primes()\nprint("First 10 primes:", [next(gen) for _ in range(10)])\n\nimport itertools\nnat = itertools.count(1)\nprint("First 8 squares:", list(itertools.islice((x*x for x in nat), 8)))\n` },
+
+  { key:'context', icon:'⏱️', label:'Context Managers', desc:'Custom with-block via __enter__/__exit__', tag:'advanced', tc:'#fab387',
+    code:`import time\n\nclass Timer:\n    def __enter__(self):\n        self._t = time.perf_counter()\n        return self\n    def __exit__(self, *_):\n        self.ms = (time.perf_counter() - self._t) * 1000\n        print(f"  elapsed: {self.ms:.2f} ms")\n        return False\n\nwith Timer() as t:\n    data = list(range(500_000))\n\nwith Timer():\n    total = sum(data)\n\nprint(f"Total: {total:,}")\nprint(f"Measured: {t.ms:.2f} ms")\n` },
+
+  { key:'sort', icon:'🔀', label:'Sorting & Search', desc:'Custom keys, bisect, heapq', tag:'algo', tc:'#89b4fa',
+    code:`import bisect, heapq\n\npeople = [\n    {"name":"Alice",   "age":30, "score":85},\n    {"name":"Bob",     "age":25, "score":92},\n    {"name":"Charlie", "age":35, "score":85},\n    {"name":"Diana",   "age":28, "score":78},\n]\n\nranked = sorted(people, key=lambda p: (-p["score"], p["name"]))\nprint("Ranked:")\nfor i, p in enumerate(ranked, 1):\n    print(f"  {i}. {p['name']:8} score={p['score']}")\n\nnums = sorted([3,7,1,9,2,8,4,6,5])\npos = bisect.bisect_left(nums, 6)\nprint(f"\\nbisect: 6 at index {pos} in {nums}")\n\nscores = [42,91,7,55,83,16,78]\nprint("Top 3:", heapq.nlargest(3, scores))\n` },
+
+  { key:'dataclass', icon:'📦', label:'Dataclasses', desc:'@dataclass, field(), __post_init__', tag:'modern', tc:'#cba6f7',
+    code:`from dataclasses import dataclass, field\nfrom typing import List\n\n@dataclass(order=True)\nclass Student:\n    sort_index: float = field(init=False, repr=False)\n    name:  str\n    grade: float\n    tags:  List[str] = field(default_factory=list)\n\n    def __post_init__(self):\n        self.sort_index = -self.grade\n\n    def passed(self, threshold=50.0) -> bool:\n        return self.grade >= threshold\n\nstudents = [\n    Student("Alice",   88.5, ["math","science"]),\n    Student("Bob",     72.0, ["english"]),\n    Student("Charlie", 45.0),\n    Student("Diana",   95.0, ["math","art"]),\n]\n\nfor s in sorted(students):\n    status = "✓" if s.passed() else "✗"\n    print(f"{status} {s.name:10} {s.grade:5.1f}  {s.tags}")\n` },
+
+  { key:'matrix', icon:'🧮', label:'Matrix Ops', desc:'Multiply, transpose, determinant — pure Python', tag:'math', tc:'#f38ba8',
+    code:`def zeros(r,c): return [[0.0]*c for _ in range(r)]\n\ndef matmul(A,B):\n    r,k,c = len(A),len(B),len(B[0])\n    C = zeros(r,c)\n    for i in range(r):\n        for j in range(c):\n            for p in range(k): C[i][j]+=A[i][p]*B[p][j]\n    return C\n\ndef T(M): return [[M[j][i] for j in range(len(M))] for i in range(len(M[0]))]\n\ndef show(M,name=""):\n    if name: print(f"{name}:")\n    for row in M: print("  ",[f"{v:6.1f}" for v in row])\n\nA=[[1,2,3],[4,5,6]]; B=[[7,8],[9,10],[11,12]]\nshow(A,"A (2x3)"); show(B,"B (3x2)")\nshow(matmul(A,B),"AxB"); show(T(A),"A^T")\n` },
+];
+
+// ════════════════════════════════════════
+// STATE — folders + files
+// ════════════════════════════════════════
+const SID = 'snippets';
+let folders = [];
+let tabs = [{ id:1, name:'main.py', code:defaultCode(), dirty:false, folderId:null }];
+let openTabIds = new Set([1]); // tracks which files are open in the tab strip
+let activeId = 1;
+let nextId   = 2;
+let nextFolderId = 1;
+
+function newFolder(){
+  openModal('New Folder', 'untitled', name => {
+    if(!name.trim()) return;
+    folders.push({ id: nextFolderId++, name: name.trim(), open: true, parentId: null });
+    renderFileList();
+  });
+  // Change confirm button label temporarily
+  document.querySelector('#renameModal .confirm').textContent = 'Create';
+  document.getElementById('modalInput').placeholder = 'folder name';
+}
+
+// ════════════════════════════════════════
+// FILE TREE RENDER
+// ════════════════════════════════════════
+let dragTabId = null; // id of tab being dragged
+
+function renderFileList(){
+  const el = document.getElementById('fileList');
+  el.innerHTML = '';
+
+  folders.filter(f=>f.parentId===null).forEach(f=>{
+    el.appendChild(buildFolderEl(f));
+  });
+
+  tabs.filter(t=>t.folderId===null).forEach(t=>{
+    el.appendChild(buildFileEl(t));
+  });
+
+  // Root drop zone — lets you drag files OUT of folders back to root
+  const zone = document.createElement('div');
+  zone.className = 'drop-root-zone';
+  zone.textContent = '↑ drop here to move to root';
+  zone.addEventListener('dragover', e=>{ e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', ()=>zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e=>{
+    e.preventDefault(); zone.classList.remove('drag-over');
+    if(dragTabId !== null){
+      const t = tabs.find(t=>t.id===dragTabId);
+      if(t){ t.folderId=null; renderTabs(); renderFileList(); showToast('📄 Moved to root'); }
+      dragTabId=null;
+    }
+  });
+  el.appendChild(zone);
+}
+
+function buildFolderEl(folder){
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-folder' + (folder.open ? ' open' : '');
+  wrap.dataset.fid = folder.id;
+
+  const row = document.createElement('div');
+  row.className = 'tree-folder-row';
+  row.innerHTML = `<span class="tree-chevron">▶</span><span style="font-size:13px">📁</span><span style="flex:1">${esc(folder.name)}</span>`;
+  row.onclick = () => { folder.open = !folder.open; wrap.classList.toggle('open', folder.open); };
+  row.addEventListener('contextmenu', e=>{ e.preventDefault(); e.stopPropagation(); openFctx(e, null, folder); });
+
+  // Folder is a drop target
+  row.addEventListener('dragover', e=>{ e.preventDefault(); row.classList.add('drag-over'); });
+  row.addEventListener('dragleave', ()=>row.classList.remove('drag-over'));
+  row.addEventListener('drop', e=>{
+    e.preventDefault(); row.classList.remove('drag-over');
+    if(dragTabId !== null){
+      const t = tabs.find(t=>t.id===dragTabId);
+      if(t && t.folderId !== folder.id){
+        t.folderId = folder.id;
+        folder.open = true;
+        renderTabs(); renderFileList();
+        showToast(`📁 Moved to ${folder.name}`);
+      }
+      dragTabId = null;
+    }
+  });
+
+  wrap.appendChild(row);
+
+  const children = document.createElement('div');
+  children.className = 'tree-children';
+  tabs.filter(t=>t.folderId===folder.id).forEach(t=>{
+    children.appendChild(buildFileEl(t));
+  });
+  wrap.appendChild(children);
+  return wrap;
+}
+
+function buildFileEl(tab){
+  const d = document.createElement('div');
+  d.className = 'tree-file' + (tab.id===activeId?' active':'') + (tab.dirty?' dirty':'');
+  d.dataset.tid = tab.id;
+  d.draggable = true;
+  d.innerHTML = `<span style="font-size:12px">📄</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tab.name)}</span><span class="dirty-dot"></span>`;
+  d.onclick = () => goFileTab(tab.id);
+  d.addEventListener('contextmenu', e=>{ e.preventDefault(); e.stopPropagation(); openFctx(e, tab, null); });
+
+  // Drag source
+  d.addEventListener('dragstart', e=>{
+    dragTabId = tab.id;
+    d.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(tab.id));
+  });
+  d.addEventListener('dragend', ()=>{
+    d.classList.remove('dragging');
+    // Delay clearing so drop handler fires first
+    setTimeout(()=>{ dragTabId = null; }, 100);
+    document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  });
+
+  return d;
+}
+
+function defaultCode() {
+  return `# Welcome to PyBolt ⚡
+# Python IDE — powered by Brython
+
+def greet(name):
+    return f"Hello, {name}! 👋"
+
+squares = [x**2 for x in range(1, 11)]
+print("Squares:", squares)
+
+for name in ["World", "PyBolt", "Developer"]:
+    print(greet(name))
+
+def fib():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+gen = fib()
+print("Fibonacci:", [next(gen) for _ in range(10)])
+`;
+}
+
+// ════════════════════════════════════════
+// CODEMIRROR INIT
+// ════════════════════════════════════════
+let editor;
+function initEditor() {
+  editor = CodeMirror.fromTextArea(document.getElementById('editorEl'), {
+    mode:'python', lineNumbers:true, styleActiveLine:true,
+    matchBrackets:true, autoCloseBrackets:{pairs:'()[]{}\'\'""', explode:'[]{}'},
+    indentUnit:4, tabSize:4, indentWithTabs:false,
+    extraKeys:{
+      'Ctrl-Enter':()=>runCode(), 'Cmd-Enter':()=>runCode(),
+      'Ctrl-/':cm=>cm.execCommand('toggleComment'),
+      'Cmd-/' :cm=>cm.execCommand('toggleComment'),
+      'Ctrl-B':()=>toggleSidebar(), 'Cmd-B':()=>toggleSidebar(),
+      'Tab':cm=>cm.somethingSelected()?cm.indentSelection('add'):cm.replaceSelection('    ','end'),
+    }
+  });
+  editor.setValue(defaultCode());
+  editor.on('cursorActivity',()=>{
+    const c=editor.getCursor();
+    document.getElementById('stLn').textContent=c.line+1;
+    document.getElementById('stCol').textContent=c.ch+1;
+    const sel=editor.getSelection();
+    const el=document.getElementById('stSel');
+    if(sel.length){el.style.display='flex';document.getElementById('stSelN').textContent=sel.length}
+    else el.style.display='none';
+  });
+  editor.on('change',()=>{
+    const t=tabs.find(t=>t.id===activeId);
+    if(t&&!t.dirty){t.dirty=true;renderTabs();}
+  });
+  setTimeout(()=>editor.refresh(),80);
+}
+
+// ════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════
+function renderTabs() {
+  const strip=document.getElementById('tabStrip');
+  strip.innerHTML='';
+
+  tabs.filter(t=>openTabIds.has(t.id)).forEach(t=>{
+    const el=document.createElement('div');
+    el.className='t-tab'+(t.id===activeId?' active':'')+(t.dirty?' dirty':'');
+    el.innerHTML=`<span class="tab-dot"></span>${esc(t.name)}<span class="tab-x" data-id="${t.id}">✕</span>`;
+    el.addEventListener('click',e=>{if(!e.target.classList.contains('tab-x'))goFileTab(t.id);});
+    el.querySelector('.tab-x').addEventListener('click',e=>{e.stopPropagation();closeTab(t.id);});
+    strip.appendChild(el);
+  });
+
+  const nb=document.createElement('button');
+  nb.className='btn-new';nb.textContent='+';nb.title='Open or create file';
+  nb.onclick=e=>{ e.stopPropagation(); filePickerOpen ? closeFilePicker() : openFilePicker(nb); };
+  strip.appendChild(nb);
+
+  renderFileList();
+}
+
+function saveEditorToTab(){
+  if(activeId===SID)return;
+  const t=tabs.find(t=>t.id===activeId);
+  if(t)t.code=editor.getValue();
+}
+
+function goFileTab(id){
+  saveEditorToTab();
+  openTabIds.add(id);
+  activeId=id;
+  const t=tabs.find(t=>t.id===id);
+  if(t){editor.setValue(t.code);editor.clearHistory();}
+  document.getElementById('editorWrap').style.display='block';
+  document.getElementById('snipView').classList.remove('on');
+  document.getElementById('resizeH').style.display='block';
+  document.getElementById('outPanel').style.display='flex';
+  const sb=document.getElementById('snipSideBtn');
+  if(sb) sb.classList.remove('active');
+  renderTabs();clearErrMarkers();
+  setTimeout(()=>editor.refresh(),30);
+}
+
+function goSnipTab(){
+  saveEditorToTab();
+  activeId=SID;
+  document.getElementById('editorWrap').style.display='none';
+  document.getElementById('snipView').classList.add('on');
+  document.getElementById('resizeH').style.display='none';
+  document.getElementById('outPanel').style.display='none';
+  document.getElementById('snipSideBtn').classList.add('active');
+  renderTabs();
+}
+
+function saveTab(){
+  saveEditorToTab();
+  const t=tabs.find(t=>t.id===activeId);
+  if(t){t.dirty=false;renderTabs();}
+}
+
+function newTab(folderId=null){
+  saveEditorToTab();
+  const name=`script_${nextId}.py`;
+  tabs.push({id:nextId,name,code:`# ${name}\n\n`,dirty:false,folderId});
+  openTabIds.add(nextId);
+  goFileTab(nextId++);
+}
+
+function closeTab(id){
+  if(openTabIds.size===1){showToast('⚠️ Need at least one open tab');return;}
+  openTabIds.delete(id);
+  if(activeId===id){
+    // switch to another open tab
+    const remaining=[...openTabIds];
+    goFileTab(remaining[remaining.length-1]);
+  } else {
+    renderTabs();
+  }
+}
+
+// ── Stop running ──────────────────────────────────
+let stopRequested = false;
+function stopRun(){
+  if(!isRunning) return;
+  stopRequested = true;
+  // Brython is sync so we can't truly kill mid-execution,
+  // but we flag it so the post-run handler shows "Stopped" instead of "Finished"
+  showToast('⏹ Stop requested — will halt after current statement');
+}
+
+// ════════════════════════════════════════
+// SNIPPETS GRID
+// ════════════════════════════════════════
+function buildSnipGrid(){
+  const grid=document.getElementById('snipGrid');grid.innerHTML='';
+  SNIPS.forEach(sn=>{
+    const preview=sn.code.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,4).join('\n');
+    const card=document.createElement('div');
+    card.className='sn-card';
+    card.innerHTML=`
+      <div class="sn-head">
+        <div class="sn-ico" style="background:${sn.tc}22">${sn.icon}</div>
+        <div><div class="sn-title">${sn.label}</div><div class="sn-desc">${sn.desc}</div></div>
+        <span class="sn-badge" style="background:${sn.tc}22;color:${sn.tc}">${sn.tag}</span>
+      </div>
+      <div class="sn-pre">${esc(preview)}</div>
+      <button class="sn-open">Open in editor →</button>`;
+    const open=()=>openSnip(sn);
+    card.querySelector('.sn-open').addEventListener('click',e=>{e.stopPropagation();open();});
+    card.addEventListener('click',open);
+    grid.appendChild(card);
+  });
+}
+
+function openSnip(sn){
+  const existing=tabs.find(t=>t.name===sn.label+'.py');
+  if(existing){goFileTab(existing.id);showToast('📋 Switched to existing tab');return;}
+  tabs.push({id:nextId,name:sn.label+'.py',code:sn.code,dirty:false,folderId:null});
+  openTabIds.add(nextId);
+  goFileTab(nextId++);
+  showToast(`📋 Opened: ${sn.label}`);
+}
+
+// ════════════════════════════════════════
+// PYODIDE
+// ════════════════════════════════════════
+let pyReady=false, isRunning=false;
+let runHistory=[], errMarkers=[];
+
+const LOADER_TEXTS = [
+  // Common (weight 10)
+  { t:'Setting things up...',           w:10 },
+  { t:'Hold on...',                     w:10 },
+  { t:'About done...',                  w:10 },
+  { t:'Hold your horses...',            w:10 },
+  { t:'Loading... bland but yes...',    w:10 },
+  { t:'Loadeth...',                     w:10 },
+  { t:'<loading text>...',              w:10 },
+  { t:"Well, loadin', if you don't mind wait...", w:10 },
+  { t:'Loading, pleaseeee wait???',     w:10 },
+  { t:'I daresay, loading, please wait...', w:10 },
+  { t:'Entering Hyperspace...',         w:10 },
+  { t:'Firing fusion drives...',        w:10 },
+  { t:'okay i ran out of ideas...',     w:10 },
+  // Uncommon (weight 4)
+  { t:'Arrr! Loading, please wait...',  w:4 },
+  { t:'Prithee, loadeth, prithee wait...', w:4 },
+  { t:'Woading, pwease wait >w<...',    w:4 },
+  { t:'*peeks at you* l-L-Loading *pounces on you*, p-please~ wait ehehe~', w:4 },
+  { t:'Warming up the Brython engine...', w:4 },
+  { t:'Importing the universe...',      w:4 },
+  { t:'Compiling vibes...',             w:4 },
+  { t:'Parsing your patience...',       w:4 },
+  { t:'*minecraft villager noises*...', w:4 },
+  { t:'ur mom...',                      w:4 },
+  // Rare (weight 1)
+  { t:'Summoning Brython spirits...',   w:1 },
+  { t:'Consulting the Python gods...',  w:1 },
+  { t:'Bribing the garbage collector...', w:1 },
+  { t:'Teaching JavaScript to speak Python...', w:1 },
+  { t:'Untangling the event loop...',   w:1 },
+  { t:'Feeding the CPU hamsters...',    w:1 },
+  { t:'Negotiating with the browser...', w:1 },
+  { t:'Reticulating splines...',        w:1 },
+  { t:'Convincing Python it\'s not JavaScript...', w:1 },
+  { t:'shit, hold on...',               w:1 },
+  { t:'what the fuck is taking so long...', w:1 },
+  { t:"oh for fuck's sake just load...", w:1 },
+  { t:'𓃭𓅱𓀀𓂧𓇌𓈖𓎼𓇯  𓊪𓃭𓇋𓀀𓊃𓇋  𓅱𓀀𓇌𓏏...', w:1 },
+];
+
+// Build weighted pool and pick without immediate repeat
+function makeLoaderPicker(){
+  const pool = [];
+  LOADER_TEXTS.forEach(({t,w})=>{ for(let i=0;i<w;i++) pool.push(t); });
+  let last = null;
+  return function pick(){
+    let candidates = pool.filter(t=>t!==last);
+    const t = candidates[Math.floor(Math.random()*candidates.length)];
+    last = t;
+    return t;
+  };
+}
+
+function initPython(){
+  brython({debug:0, indexedDB:false});
+
+  const bar     = document.getElementById('loaderBar');
+  const textEl  = document.getElementById('loaderText');
+  const overlay = document.getElementById('loaderOverlay');
+
+  // Start CSS bar animation
+  bar.classList.add('flowing');
+
+  // Flavour text cycling — fade between texts
+  const pick = makeLoaderPicker();
+  textEl.textContent = pick();
+
+  const textTimer = setInterval(()=>{
+    textEl.style.opacity = '0';
+    setTimeout(()=>{
+      textEl.textContent = pick();
+      textEl.style.opacity = '1';
+    }, 260);
+  }, 800);
+
+  const TOTAL = 3000;
+
+  // Warmup: pre-import heavy stdlib so first user run is faster
+  setTimeout(()=>{
+    const src =
+`try:
+    import math, random, statistics, itertools, functools, collections, datetime, string, re, json, fractions, decimal, heapq, bisect
+except:
+    pass`;
+    try {
+      const _cw = console.warn, _cl = console.log, _ce = console.error;
+      console.warn = console.log = console.error = ()=>{};
+      eval(__BRYTHON__.python_to_js(src));
+      console.warn = _cw; console.log = _cl; console.error = _ce;
+    } catch(e){}
+  }, 400);
+
+  // After TOTAL ms: snap bar to 100%, dismiss overlay
+  setTimeout(()=>{
+    clearInterval(textTimer);
+    bar.style.animation = 'none';
+    bar.style.width = '100%';
+    bar.style.transition = 'width .15s ease';
+
+    setTimeout(()=>{
+      overlay.classList.add('hidden');
+      setTimeout(()=>overlay.remove(), 450);
+      pyReady = true;
+      setMsg('Python ready ✓');
+      printLine('Python ready — press Ctrl+Enter or Run ▶','info');
+      printLine('First run may take ~5 seconds extra','info');
+    }, 180);
+  }, TOTAL);
+}
+
+async function runCode(){
+  if(activeId===SID){showToast('⚠️ Open a code tab to run');return;}
+  if(isRunning)return;
+  if(!pyReady){showToast('⏳ Runtime not ready');return;}
+  saveTab();clearErrMarkers();
+  const code=editor.getValue().trim();
+  if(!code){ printLine('Nothing to run — file is empty.','info'); isRunning=false;setRunning(false); return; }
+  isRunning=true;setRunning(true);clearOutput();
+  const name=tabs.find(t=>t.id===activeId)?.name??'script.py';
+
+  // ── Pre-run verification (engine/verifier.js) ──
+  // Runs before the timer so it doesn't affect execution time
+  if(ideSettings.verifier && window.PyBoltVerifier && (name.endsWith('.py') || name.endsWith('.json'))){
+    const check = PyBoltVerifier.verify(code, name);
+    if(!check.ok){
+      printLine(`▶  ${name}`,'info');
+      printLine('\n'+check.message,'err');
+      highlightErr(check.message);
+      document.getElementById('errBadge').classList.add('on');
+      ideLog('warn', `Verifier blocked run: ${check.message}`);
+      isRunning=false; setRunning(false);
+      return;
+    }
+  }
+
+  printLine(`▶  ${name}`,'info');
+  const t0=performance.now();
+  runHistory.unshift({code,name,time:new Date().toLocaleTimeString()});
+  if(runHistory.length>30)runHistory.pop();
+  renderHistory();
+
+  // Expose output callbacks on window — accessible from Brython via browser.window
+  window.__pb_out__ = s => printOut(String(s),'out');
+  window.__pb_err__ = s => printOut(String(s),'err');
+
+  // pb bridge — lets Python read other open tabs by filename
+  window.__pb_bridge__ = {
+    read(filename){
+      const t = tabs.find(t => t.name === filename);
+      if(!t) throw new Error(`pb.read: no open tab named "${filename}"`);
+      return t.code;
+    },
+    list(){
+      return tabs.map(t => t.name);
+    }
+  };
+
+  // Wrap user code: redirect sys.stdout/stderr to our JS callbacks
+  // Indent every line of user code by 4 spaces so it sits inside the try block
+  const indented = code.split('\n').map(l=>'    '+l).join('\n');
+  const wrapped =
+`from browser import window as _w
+import sys, traceback
+
+class _W:
+    def __init__(self, fn): self._fn = fn
+    def write(self, s): self._fn(s)
+    def flush(self): pass
+
+sys.stdout = _W(_w.__pb_out__)
+sys.stderr = _W(_w.__pb_err__)
+
+# pb — PyBolt file bridge
+class _PB:
+    def read(self, filename):
+        return _w.__pb_bridge__.read(filename)
+    def list(self):
+        return list(_w.__pb_bridge__.list())
+
+pb = _PB()
+
+try:
+    pass
+${indented}
+except BaseException as _e:
+    # Format a clean, readable traceback
+    _lines = traceback.format_exception(type(_e), _e, _e.__traceback__)
+    _msg = ''.join(_lines)
+    # Strip internal wrapper noise (lines referencing our boilerplate)
+    _clean = '\\n'.join(
+        l for l in _msg.splitlines()
+        if 'python_script_' not in l or 'File' not in l
+    )
+    _w.__pb_err__(_clean if _clean.strip() else _msg)
+`;
+
+  // Extract a clean readable message from a Brython error object
+  // From debug: e.name = error type, e.args = message string, e.toString() = short message
+  function extractBrythonError(e, src){
+    const name = e?.name ?? '';
+    const args = e?.args;
+    const argStr = (typeof args === 'string') ? args.trim() : '';
+
+    // Runtime error with a clean message (NameError, TypeError, etc.)
+    if(argStr && !argStr.includes('f_builtins') && !argStr.includes('srcdoc')){
+      return `${name ? name+': ' : ''}${argStr}`;
+    }
+
+    // Syntax error — thrown by python_to_js before execution
+    // The error string contains a srcdoc URL like: ...#id,LINE,COL,TOKEN,...
+    const raw = e?.toString?.() ?? String(e);
+    const m = raw.match(/,(\d+),\d+,/);
+    if(m){
+      const lineNo = Math.max(1, parseInt(m[1]) - 16); // subtract 16-line boilerplate header
+      const srcLine = src.split('\n')[lineNo - 1]?.trim() ?? '';
+      return `SyntaxError on line ${lineNo}${srcLine ? ': ' + srcLine : ''}`;
+    }
+
+    // Fallback
+    const fallback = raw.replace(/about:srcdoc#[^\s,]+/g, '').trim();
+    return fallback || 'Unknown error';
+  }
+
+  const _cw = console.warn, _cl = console.log;
+  // Save on run
+  if(ideSettings.autosave && window.PyBoltStorage){
+    PyBoltStorage.save(getWorkspaceState());
+    workspaceDirty = false;
+    updateSavedAtLabel();
+  }
+
+  // Defer execution one frame so the browser repaints the Stop button first
+  setTimeout(()=>{
+    try{
+      console.warn = () => {};
+      console.log  = () => {};
+      eval(__BRYTHON__.python_to_js(wrapped));
+      console.warn = _cw;
+      console.log  = _cl;
+      if(stopRequested){
+        printLine(`\n⏹  Stopped`,'info');
+      } else {
+        printLine(`\n✓  Finished in ${(performance.now()-t0).toFixed(1)} ms`,'ok');
+      }
+    }catch(e){
+      console.warn = _cw;
+      console.log  = _cl;
+      const msg = extractBrythonError(e, code);
+      printLine('\n'+msg,'err');
+      highlightErr(msg);
+      document.getElementById('errBadge').classList.add('on');
+    }
+    stopRequested = false;
+    isRunning=false;setRunning(false);
+  }, 0);
+}
+
+function captureVars(){
+  document.getElementById('varsList').innerHTML=
+    '<span style="color:var(--text3);font-style:italic">Variable inspection not available</span>';
+}
+
+function renderHistory(){
+  const el=document.getElementById('histList');
+  if(!runHistory.length){el.innerHTML='<span style="color:var(--text3);font-style:italic">No runs yet</span>';return;}
+  el.innerHTML=runHistory.map((h,i)=>`<div class="hr" onclick="loadHist(${i})"><div class="hm"><span class="hn">${esc(h.name)}</span><span class="ht">${h.time}</span></div><div class="hp">${esc(h.code.trim().split('\n').find(l=>l.trim()&&!l.startsWith('#'))||'')}</div></div>`).join('');
+}
+
+function loadHist(i){
+  const h=runHistory[i];
+  if(activeId!==SID){const t=tabs.find(t=>t.id===activeId);if(t){t.code=h.code;editor.setValue(h.code);showToast('📋 Loaded from history');}}
+}
+
+function highlightErr(msg){
+  const m=msg.match(/line (\d+)/i);
+  if(m){const ln=parseInt(m[1])-1;clearErrMarkers();errMarkers.push({ln,mk:editor.addLineClass(ln,'background','error-line')});editor.scrollIntoView({line:ln,ch:0},80);}
+}
+function clearErrMarkers(){
+  errMarkers.forEach(({ln,mk})=>editor.removeLineClass(ln,'background','error-line'));
+  errMarkers=[];document.getElementById('errBadge').classList.remove('on');
+}
+
+// ════════════════════════════════════════
+// OUTPUT
+// ════════════════════════════════════════
+function printOut(text,cls){
+  const el=document.getElementById('output');
+  const sp=document.createElement('span');sp.className='o-'+cls;sp.textContent=text;
+  el.appendChild(sp);document.getElementById('bOutput').scrollTop=9999;
+}
+function printLine(t,cls='out'){printOut(t+'\n',cls);}
+function clearOutput(){document.getElementById('output').innerHTML='';document.getElementById('errBadge').classList.remove('on');}
+
+function switchOut(name){
+  ['output','vars','hist','console'].forEach(n=>{
+    document.getElementById('b'+n.charAt(0).toUpperCase()+n.slice(1)).style.display = n===name ? 'block' : 'none';
+    document.getElementById('ot'+n.charAt(0).toUpperCase()+n.slice(1)).classList.toggle('active', n===name);
+  });
+}
+
+let outCollapsed=false;
+let outPanelSavedHeight=''; // remembers dragged height across toggles
+
+function toggleOut(){
+  outCollapsed=!outCollapsed;
+  const panel=document.getElementById('outPanel');
+  if(outCollapsed){
+    // Save any inline height the user dragged to, then collapse
+    outPanelSavedHeight=panel.style.height||'';
+    panel.style.height='35px';
+  } else {
+    // Restore saved dragged height, or fall back to CSS default
+    panel.style.height=outPanelSavedHeight||'';
+  }
+  panel.classList.toggle('collapsed',outCollapsed);
+  document.getElementById('panToggle').textContent=outCollapsed?'▲':'▼';
+  setTimeout(()=>editor.refresh(),160);
+}
+
+// resize
+let resizing=false,resY=0,resH=0;
+document.getElementById('resizeH').addEventListener('mousedown',e=>{
+  resizing=true;resY=e.clientY;resH=document.getElementById('outPanel').offsetHeight;
+  document.body.style.cursor='ns-resize';document.body.style.userSelect='none';
+  document.getElementById('resizeH').classList.add('drag');
+});
+document.addEventListener('mousemove',e=>{
+  if(!resizing)return;
+  const h=Math.max(35,Math.min(600,resH+(resY-e.clientY)));
+  document.getElementById('outPanel').style.height=h+'px';
+  outPanelSavedHeight=h+'px';
+});
+document.addEventListener('mouseup',()=>{
+  if(resizing){resizing=false;document.body.style.cursor='';document.body.style.userSelect='';document.getElementById('resizeH').classList.remove('drag');editor.refresh();}
+});
+
+// ════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════
+let sbOpen=true;
+function toggleSidebar(){
+  sbOpen=!sbOpen;
+  document.getElementById('sidebar').classList.toggle('hidden',!sbOpen);
+  setTimeout(()=>editor.refresh(),210);
+}
+
+function toggleFind(){
+  const fb=document.getElementById('findBar');fb.classList.toggle('on');
+  if(fb.classList.contains('on')){const inp=document.getElementById('findInput');inp.focus();const s=editor.getSelection();if(s)inp.value=s;doFind();}
+}
+function doFind(){const q=document.getElementById('findInput').value;if(!q)return;const c=editor.getSearchCursor(q,editor.getCursor('from'));if(c.findNext())editor.setSelection(c.from(),c.to());}
+function findNext(){const q=document.getElementById('findInput').value;if(!q)return;const c=editor.getSearchCursor(q,editor.getCursor());if(c.findNext())editor.setSelection(c.from(),c.to());else{const c2=editor.getSearchCursor(q,{line:0,ch:0});if(c2.findNext())editor.setSelection(c2.from(),c2.to());}}
+function findPrev(){const q=document.getElementById('findInput').value;if(!q)return;const c=editor.getSearchCursor(q,editor.getCursor('from'));if(c.findPrevious())editor.setSelection(c.from(),c.to());}
+function findKey(e){if(e.key==='Enter')e.shiftKey?findPrev():findNext();if(e.key==='Escape')toggleFind();}
+
+function downloadFile(){
+  saveEditorToTab();const t=tabs.find(t=>t.id===activeId);if(!t)return;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t.code],{type:'text/plain'}));a.download=t.name;a.click();
+  showToast('⬇  Downloaded '+t.name);
+}
+
+function setRunning(on){
+  document.getElementById('runIcon').innerHTML = on ? '<span class="spin"></span>' : '▶';
+  document.getElementById('runLabel').textContent = on ? 'Stop' : 'Run';
+  document.getElementById('runBtn').classList.toggle('running', on);
+  document.getElementById('runBtn').title = on ? 'Stop execution' : 'Run (Ctrl+Enter)';
+}
+function setMsg(m){document.getElementById('stMsg').textContent=m;}
+// ════════════════════════════════════════
+// TOAST STACK
+// ════════════════════════════════════════
+(function(){
+  const DURATION = 3000;
+  const stack = [];  // { msg, el, msgEl, countEl, count, timer }
+
+  function showToast(msg) {
+    const existing = stack.find(t => t.msg === msg);
+    if (existing) {
+      // Bump count on the existing toast and reset its timer
+      existing.count++;
+      existing.countEl.textContent = existing.count + 'x';
+      existing.countEl.style.display = '';
+      clearTimeout(existing.timer);
+      existing.timer = setTimeout(() => removeToast(existing), DURATION);
+      return;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'toast-item';
+
+    const msgEl = document.createElement('span');
+    msgEl.style.flex = '1';
+    msgEl.textContent = msg;
+
+    const countEl = document.createElement('span');
+    countEl.className = 'toast-count';
+    countEl.style.display = 'none';
+
+    item.appendChild(msgEl);
+    item.appendChild(countEl);
+    document.getElementById('toastStack').appendChild(item);
+
+    // Animate in
+    requestAnimationFrame(() => requestAnimationFrame(() => item.classList.add('on')));
+
+    const entry = { msg, el: item, msgEl, countEl, count: 1, timer: null };
+    entry.timer = setTimeout(() => removeToast(entry), DURATION);
+    stack.push(entry);
+  }
+
+  function removeToast(entry) {
+    const idx = stack.indexOf(entry);
+    if (idx === -1) return;
+    stack.splice(idx, 1);
+    entry.el.classList.remove('on');
+    entry.el.classList.add('out');
+    setTimeout(() => entry.el.remove(), 220);
+  }
+
+  window.showToast = showToast;
+})();
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='f'){e.preventDefault();toggleFind();}
+  if(e.key==='Escape')document.getElementById('findBar').classList.remove('on');
+});
+
+// ════════════════════════════════════════
+// FILE CONTEXT MENU
+// ════════════════════════════════════════
+const fctxMenu = document.getElementById('fctxMenu');
+let fctxTarget = { tab: null, folder: null };
+
+function openFctx(e, tab, folder){
+  fctxTarget = { tab, folder, _shiftKey: e.shiftKey };
+  // Show/hide folder-only items
+  const isFolder = !!folder;
+  document.getElementById('fctxOpen').style.display      = isFolder ? 'none' : 'flex';
+  document.getElementById('fctxMove').style.display      = isFolder ? 'none' : 'flex';
+  document.getElementById('fctxDuplicate').style.display = isFolder ? 'none' : 'flex';
+  document.getElementById('fctxFolderSep').style.display = 'block';
+  // Position
+  const mw=190, mh=fctxMenu.offsetHeight||200;
+  fctxMenu.style.left = (e.clientX+mw>window.innerWidth  ? e.clientX-mw : e.clientX+2)+'px';
+  fctxMenu.style.top  = (e.clientY+mh>window.innerHeight ? e.clientY-mh : e.clientY+2)+'px';
+  fctxMenu.classList.add('open');
+}
+
+// ── Manual verify (✔ button) ──────────────────────
+function manualVerify(){
+  if(activeId===SID){ showToast('⚠️ Open a code tab to verify'); return; }
+  const code = editor.getValue().trim();
+  const name = tabs.find(t=>t.id===activeId)?.name ?? '';
+  const supported = name.endsWith('.py') || name.endsWith('.json');
+  if(!supported){ showToast('ℹ️ Verification supports .py and .json files'); return; }
+  if(!code){ showToast('ℹ️ File is empty'); return; }
+  if(!window.PyBoltVerifier){ showToast('⚠️ Verifier not loaded'); return; }
+  clearOutput();
+  printLine(`✔  Verifying ${name}…`,'info');
+  const result = PyBoltVerifier.verify(code, name);
+  if(result.ok){
+    printLine('✔  No issues found — code looks good!','ok');
+    ideLog('info', `Verified ${name}: OK`);
+    showToast('✔ All clear');
+  } else {
+    printLine('\n'+result.message,'err');
+    highlightErr(result.message);
+    document.getElementById('errBadge').classList.add('on');
+    ideLog('warn', `Verified ${name}: ${result.message}`);
+    showToast('⚠️ Issue found on line '+result.line);
+  }
+}
+
+function closeFctx(){
+  fctxMenu.classList.remove('open');
+  closeMoveMenu();
+}
+
+const moveMenu = document.getElementById('moveMenu');
+let moveMenuOpen = false;
+let moveMenuHideTimer = null;
+
+function openMoveMenu(){
+  const tab = fctxTarget.tab;
+  if(!tab) return;
+  const list = document.getElementById('moveMenuList');
+  list.innerHTML = '';
+
+  // Helper: build a destination row
+  function makeRow(icon, label, isCurrent, depth, onClickFn){
+    const d = document.createElement('div');
+    d.className = 'fctx-item move-dest' + (isCurrent ? ' move-current' : '');
+    d.style.paddingLeft = (10 + depth * 14) + 'px';
+    d.innerHTML = `<span style="font-size:12px;flex-shrink:0">${icon}</span><span style="flex:1">${esc(label)}</span>${isCurrent ? '<span style="font-size:9px;color:var(--teal);margin-left:4px;font-weight:700">current</span>' : ''}`;
+    if(isCurrent){
+      d.style.opacity = '0.5';
+      d.style.cursor = 'default';
+    } else {
+      d.onclick = onClickFn;
+    }
+    return d;
+  }
+
+  // Root row
+  const isAtRoot = tab.folderId === null;
+  list.appendChild(makeRow('📄', '/ Root', isAtRoot, 0, ()=>{
+    tab.folderId = null;
+    renderTabs(); renderFileList(); closeFctx();
+    showToast('📄 Moved to root');
+  }));
+
+  // Folder rows (with depth for subfolders — currently only depth 0 supported in state)
+  if(folders.length === 0 && !isAtRoot){
+    // nothing extra needed
+  } else if(folders.length > 0){
+    // separator
+    const sep = document.createElement('div');
+    sep.className = 'fctx-sep';
+    list.appendChild(sep);
+
+    folders.forEach(f => {
+      const isCurrent = tab.folderId === f.id;
+      list.appendChild(makeRow('📁', f.name, isCurrent, 0, ()=>{
+        tab.folderId = f.id; f.open = true;
+        renderTabs(); renderFileList(); closeFctx();
+        showToast(`📁 Moved to ${f.name}`);
+      }));
+      // Subfolders (parentId === f.id)
+      folders.filter(sf => sf.parentId === f.id).forEach(sf => {
+        const isSubCurrent = tab.folderId === sf.id;
+        list.appendChild(makeRow('📁', sf.name, isSubCurrent, 1, ()=>{
+          tab.folderId = sf.id; sf.open = true;
+          renderTabs(); renderFileList(); closeFctx();
+          showToast(`📁 Moved to ${sf.name}`);
+        }));
+      });
+    });
+  }
+
+  if(folders.length === 0 && isAtRoot){
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:6px 12px;font-family:var(--mono);font-size:10.5px;color:var(--text3);font-style:italic';
+    empty.textContent = 'No folders — create one first';
+    list.appendChild(empty);
+  }
+
+  // Position: aligned to the "Move to…" row, opening to the right
+  const moveRow = document.getElementById('fctxMove');
+  const rr = moveRow.getBoundingClientRect();
+  const mw = 200;
+  const left = (rr.right + mw < window.innerWidth) ? rr.right + 2 : rr.left - mw - 2;
+  const top  = Math.min(rr.top, window.innerHeight - (list.children.length * 32 + 20));
+  moveMenu.style.left = left + 'px';
+  moveMenu.style.top  = Math.max(4, top) + 'px';
+  moveMenu.classList.add('open');
+  moveMenuOpen = true;
+}
+
+function closeMoveMenu(){
+  moveMenu.classList.remove('open');
+  moveMenuOpen = false;
+}
+
+// Wire hover on the Move row — open on mouseenter, cancel hide on re-enter
+document.addEventListener('DOMContentLoaded', ()=>{}, false);
+function wireMoveHover(){
+  const moveRow = document.getElementById('fctxMove');
+  if(!moveRow) return;
+  moveRow.addEventListener('mouseenter', ()=>{
+    clearTimeout(moveMenuHideTimer);
+    openMoveMenu();
+  });
+  moveRow.addEventListener('mouseleave', ()=>{
+    moveMenuHideTimer = setTimeout(()=>{ if(!moveMenu.matches(':hover')) closeMoveMenu(); }, 120);
+  });
+  moveMenu.addEventListener('mouseenter', ()=> clearTimeout(moveMenuHideTimer));
+  moveMenu.addEventListener('mouseleave', ()=>{
+    moveMenuHideTimer = setTimeout(closeMoveMenu, 120);
+  });
+}
+// Wire after DOM ready
+wireMoveHover();
+
+document.addEventListener('click', e=>{
+  if(moveMenuOpen && !moveMenu.contains(e.target) && !fctxMenu.contains(e.target)) closeMoveMenu();
+});
+
+function fctxAction(action){
+  closeFctx();
+  const { tab, folder } = fctxTarget;
+  switch(action){
+    case 'open':
+      if(tab) goFileTab(tab.id);
+      break;
+
+    case 'rename':
+      if(tab){
+        openModal('Rename File', tab.name, newName=>{
+          if(newName && newName.trim()) { tab.name=newName.trim(); renderTabs(); renderFileList(); }
+        });
+      } else if(folder){
+        openModal('Rename Folder', folder.name, newName=>{
+          if(newName && newName.trim()) { folder.name=newName.trim(); renderFileList(); }
+        });
+      }
+      break;
+
+    case 'copypath': {
+      const name = tab ? tab.name : folder?.name;
+      const path = tab
+        ? (tab.folderId ? (folders.find(f=>f.id===tab.folderId)?.name+'/'+tab.name) : tab.name)
+        : (folder?.name+'/');
+      navigator.clipboard.writeText(path).then(()=>showToast('🔗 Path copied: '+path));
+      break;
+    }
+
+    case 'duplicate':
+      if(tab){
+        const copy = { id:nextId++, name:tab.name.replace(/(\.\w+)?$/, '_copy$1'), code:tab.code, dirty:false, folderId:tab.folderId };
+        tabs.push(copy);
+        openTabIds.add(copy.id);
+        goFileTab(copy.id);
+        showToast('⎘ Duplicated');
+      }
+      break;
+
+    case 'newfile':
+      newTab(folder ? folder.id : (tab ? tab.folderId : null));
+      break;
+
+    case 'delete':
+      if(tab){
+        if(tabs.length===1){ showToast('⚠️ Need at least one file'); return; }
+        const doDeleteTab = () => {
+          openTabIds.delete(tab.id);
+          tabs = tabs.filter(t=>t.id!==tab.id);
+          if(activeId===tab.id){
+            const remaining=[...openTabIds];
+            if(remaining.length) goFileTab(remaining[0]);
+            else if(tabs.length) goFileTab(tabs[0].id);
+            else newTab();
+          } else { renderTabs(); renderFileList(); }
+          showToast('🗑 Deleted '+tab.name);
+        };
+        if(fctxTarget._shiftKey){ doDeleteTab(); return; }
+        openConfirm(
+          `Delete "${tab.name}"?`,
+          `This will permanently delete ${tab.name}. This cannot be undone.`,
+          doDeleteTab
+        );
+      } else if(folder){
+        const fileCount = tabs.filter(t=>t.folderId===folder.id).length;
+        const warn = fileCount > 0
+          ? `⚠️ This will also delete ${fileCount} file${fileCount>1?'s':''} inside "${folder.name}" — ${tabs.filter(t=>t.folderId===folder.id).map(t=>t.name).join(', ')}. This cannot be undone.`
+          : `This will permanently delete the folder "${folder.name}". This cannot be undone.`;
+        const doDeleteFolder = () => {
+          const idsToDelete = tabs.filter(t=>t.folderId===folder.id).map(t=>t.id);
+          tabs = tabs.filter(t=>!idsToDelete.includes(t.id));
+          if(idsToDelete.includes(activeId)){
+            if(tabs.length===0) newTab(); else goFileTab(tabs[0].id);
+          }
+          folders = folders.filter(f=>f.id!==folder.id);
+          renderTabs(); renderFileList();
+          showToast('🗑 Deleted folder '+folder.name);
+        };
+        if(fctxTarget._shiftKey){ doDeleteFolder(); return; }
+        openConfirm(`Delete folder "${folder.name}"?`, warn, doDeleteFolder);
+      }
+      break;
+  }
+}
+
+document.addEventListener('click', e=>{
+  if(!fctxMenu.contains(e.target)) closeFctx();
+});
+
+// ════════════════════════════════════════
+// RENAME MODAL
+// ════════════════════════════════════════
+let modalCallback = null;
+
+function openModal(title, value, cb){
+  modalCallback = cb;
+  document.getElementById('modalTitle').textContent = title;
+  const inp = document.getElementById('modalInput');
+  inp.value = value;
+  document.getElementById('renameModal').classList.add('open');
+  setTimeout(()=>{ inp.focus(); inp.select(); }, 80);
+}
+
+function closeModal(){
+  document.getElementById('renameModal').classList.remove('open');
+  document.querySelector('#renameModal .confirm').textContent = 'Rename';
+  document.getElementById('modalInput').placeholder = 'filename.py';
+  modalCallback = null;
+}
+
+function confirmModal(){
+  const val = document.getElementById('modalInput').value.trim();
+  if(modalCallback && val) modalCallback(val);
+  closeModal();
+}
+
+function modalKey(e){
+  if(e.key==='Enter') confirmModal();
+  if(e.key==='Escape') closeModal();
+}
+
+// ════════════════════════════════════════
+// CONFIRM MODAL
+// ════════════════════════════════════════
+let confirmCallback = null;
+
+function openConfirm(title, warning, cb){
+  confirmCallback = cb;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmWarning').textContent = warning;
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+function closeConfirm(){
+  document.getElementById('confirmModal').classList.remove('open');
+  confirmCallback = null;
+}
+
+function confirmOk(){
+  if(confirmCallback) confirmCallback();
+  closeConfirm();
+}
+
+// Close confirm on overlay click
+document.getElementById('confirmModal').addEventListener('click', e=>{
+  if(e.target === document.getElementById('confirmModal')) closeConfirm();
+});
+document.getElementById('renameModal').addEventListener('click', e=>{
+  if(e.target === document.getElementById('renameModal')) closeModal();
+});
+
+// ════════════════════════════════════════
+// CONTEXT MENU (editor)
+const ctxMenu = document.getElementById('ctxMenu');
+let ctxOpen = false;
+
+function openCtx(x, y){
+  // Flip if too close to edge
+  const mw = 210, mh = ctxMenu.offsetHeight || 340;
+  const left = (x + mw > window.innerWidth)  ? x - mw : x;
+  const top  = (y + mh > window.innerHeight) ? y - mh : y;
+  ctxMenu.style.left = left + 'px';
+  ctxMenu.style.top  = top  + 'px';
+  ctxMenu.classList.add('open');
+  ctxOpen = true;
+  // Show/hide copy depending on selection
+  const hasSel = editor && editor.somethingSelected();
+  document.getElementById('ctxCopy').style.display = hasSel ? 'flex' : 'none';
+}
+
+function closeCtx(){
+  ctxMenu.classList.remove('open');
+  ctxOpen = false;
+}
+
+function ctxAction(action){
+  closeCtx();
+  switch(action){
+    case 'run':        runCode(); break;
+    case 'comment':    editor.execCommand('toggleComment'); editor.focus(); break;
+    case 'indent':     editor.execCommand('indentMore');    editor.focus(); break;
+    case 'dedent':     editor.execCommand('indentLess');    editor.focus(); break;
+    case 'selectall':  editor.execCommand('selectAll');     editor.focus(); break;
+    case 'selectline': {
+      const c = editor.getCursor();
+      editor.setSelection({line:c.line,ch:0},{line:c.line,ch:editor.getLine(c.line).length});
+      editor.focus(); break;
+    }
+    case 'copy': {
+      const sel = editor.getSelection();
+      if(sel) navigator.clipboard.writeText(sel).then(()=>showToast('⎘ Copied'));
+      break;
+    }
+    case 'paste':
+      navigator.clipboard.readText().then(t=>{
+        editor.replaceSelection(t); editor.focus();
+      }).catch(()=>showToast('⚠️ Paste blocked by browser'));
+      break;
+    case 'newtab':     newTab();       break;
+    case 'save':       saveTab();      showToast('💾 Saved'); break;
+    case 'download':   downloadFile(); break;
+    case 'clearoutput':clearOutput();  break;
+  }
+}
+
+// Intercept right-click on the editor and workspace
+// Block right-click everywhere except whitelisted zones
+document.addEventListener('contextmenu', e=>{
+  // Always allow if a custom handler already called stopPropagation (file/folder rows)
+  // Whitelist: editor workspace area → opens editor ctx menu
+  const inWorkspace = e.target.closest('.editor-wrap, .CodeMirror');
+  if(inWorkspace){
+    e.preventDefault();
+    openCtx(e.clientX + 2, e.clientY + 2);
+    return;
+  }
+  // File tree items and folder rows handle their own contextmenu with stopPropagation,
+  // so they never reach here. Everything else: suppress.
+  e.preventDefault();
+});
+
+// Remove the old workspace-level handler (replaced above)
+
+// Close on any click outside
+document.addEventListener('click', e=>{
+  if(ctxOpen && !ctxMenu.contains(e.target)) closeCtx();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') closeCtx();
+});
+
+// ════════════════════════════════════════
+// IDE CONSOLE
+// ════════════════════════════════════════
+function ideLog(level, msg){
+  // level: 'info' | 'warn' | 'error'
+  const el = document.getElementById('ideConsole');
+  const row = document.createElement('div');
+  row.className = 'console-line';
+  row.innerHTML = `<span class="console-level ${level}">${level.toUpperCase()}</span><span class="console-msg">${esc(msg)}</span>`;
+  el.appendChild(row);
+  document.getElementById('bConsole').scrollTop = 9999;
+}
+
+// ════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════
+const ideSettings = { verifier: true, autocomplete: true, lineNums: true, autoBracket: true, autosave: true };
+
+function reloadEngines(){
+  const btn = document.getElementById('reloadEnginesBtn');
+  const icon = document.getElementById('reloadIcon');
+
+  // Spin the icon
+  icon.style.transition = 'transform 0.6s ease';
+  icon.style.transform = 'rotate(360deg)';
+  setTimeout(()=>{ icon.style.transition='none'; icon.style.transform='rotate(0deg)'; }, 650);
+
+  const engines = [
+    { name:'verifier',     path:'engine/verifier.js',     global:'PyBoltVerifier',     setting:'verifier'     },
+    { name:'autocomplete', path:'engine/autocomplete.js', global:'PyBoltAutocomplete', setting:'autocomplete' },
+    { name:'storage',      path:'engine/storage.js',      global:'PyBoltStorage',      setting:'autosave'     },
+  ];
+
+  let loaded = 0, failed = 0;
+
+  engines.forEach(eng => {
+    // Remove old script tag if present
+    const old = document.querySelector(`script[data-engine="${eng.name}"]`);
+    if(old) old.remove();
+    // Clear the global so we can detect fresh load
+    delete window[eng.global];
+
+    const s = document.createElement('script');
+    s.src = eng.path + '?r=' + Date.now(); // cache-bust
+    s.dataset.engine = eng.name;
+    s.onload = () => {
+      loaded++;
+      ideLog('info', `Reloaded engine/${eng.name}.js`);
+      // Re-enable setting if it was off due to missing engine
+      document.getElementById('setting' + eng.setting.charAt(0).toUpperCase() + eng.setting.slice(1)).disabled = false;
+      // Re-attach autocomplete if it loaded
+      if(eng.name === 'autocomplete' && window.PyBoltAutocomplete){
+        PyBoltAutocomplete.attach(editor);
+        ideSettings.autocomplete = true;
+        document.getElementById('settingAutocomplete').checked = true;
+      }
+      if(eng.name === 'verifier'){
+        ideSettings.verifier = true;
+        document.getElementById('settingVerifier').checked = true;
+      }
+      if(eng.name === 'storage' && window.PyBoltStorage){
+        ideSettings.autosave = true;
+        document.getElementById('settingAutosave').checked = true;
+        setSaveBtn(true);
+        startAutosaveInterval();
+        updateSavedAtLabel();
+      }
+      if(loaded + failed === engines.length){
+        showToast(failed === 0 ? '✔ All engines reloaded' : `⚠️ ${failed} engine(s) failed`);
+        switchOut('console');
+      }
+    };
+    s.onerror = () => {
+      failed++;
+      ideLog('warn', `Failed to reload engine/${eng.name}.js`);
+      if(loaded + failed === engines.length){
+        showToast(`⚠️ ${failed} engine(s) failed to load`);
+        switchOut('console');
+      }
+    };
+    document.head.appendChild(s);
+  });
+}
+
+function openSettings(){
+  Object.entries(ideSettings).forEach(([k,v])=>{
+    const el = document.getElementById('setting'+k.charAt(0).toUpperCase()+k.slice(1));
+    if(el) el.checked = v;
+  });
+  updateSavedAtLabel();
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+
+function closeSettings(){
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+
+function saveSetting(key, value){
+  // Guard engine toggles — revert and warn if engine isn't loaded
+  if(key === 'verifier' && value && !window.PyBoltVerifier){
+    document.getElementById('settingVerifier').checked = false;
+    showToast('⚠️ verifier.js not loaded');
+    return;
+  }
+  if(key === 'autocomplete' && value && !window.PyBoltAutocomplete){
+    document.getElementById('settingAutocomplete').checked = false;
+    showToast('⚠️ autocomplete.js not loaded');
+    return;
+  }
+  if(key === 'autosave' && value && !window.PyBoltStorage){
+    document.getElementById('settingAutosave').checked = false;
+    showToast('⚠️ storage.js not loaded');
+    return;
+  }
+  ideSettings[key] = value;
+  if(key === 'lineNums')    editor.setOption('lineNumbers', value);
+  if(key === 'autoBracket') editor.setOption('autoCloseBrackets', value ? {pairs:'()[]{}\'\'""', explode:'[]{}' } : false);
+  if(key === 'autocomplete' && !value && window.PyBoltAutocomplete) PyBoltAutocomplete.clearGhost();
+  if(key === 'autosave' && value) { startAutosaveInterval(); setSaveBtn(true); }
+  if(key === 'autosave' && !value) { clearInterval(autosaveTimer); setSaveBtn(false); }
+  ideLog('info', `Setting "${key}" set to ${value}`);
+}
+
+document.getElementById('settingsOverlay').addEventListener('click', e=>{
+  if(e.target === document.getElementById('settingsOverlay')) closeSettings();
+});
+
+// ════════════════════════════════════════
+// FILE PICKER (+ button in tab strip)
+// ════════════════════════════════════════
+const filePicker = document.getElementById('filePicker');
+let filePickerOpen = false;
+
+function openFilePicker(anchorEl){
+  const list = document.getElementById('fpList');
+  list.innerHTML = '';
+  // List all existing tabs not currently open/active — show all for switching
+  if(tabs.length === 0){
+    list.innerHTML = '<div style="padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--text3);font-style:italic">No files yet</div>';
+  } else {
+    tabs.forEach(t => {
+      const d = document.createElement('div');
+      d.className = 'fp-item' + (t.id === activeId ? ' active' : '');
+      d.innerHTML = `<span style="font-size:12px">📄</span>${esc(t.name)}`;
+      if(t.id === activeId) d.style.color = 'var(--accent)';
+      d.onclick = () => { goFileTab(t.id); closeFilePicker(); };
+      list.appendChild(d);
+    });
+  }
+  const rect = anchorEl.getBoundingClientRect();
+  filePicker.style.left = rect.left + 'px';
+  filePicker.style.top  = (rect.bottom + 4) + 'px';
+  filePicker.classList.add('open');
+  filePickerOpen = true;
+}
+
+function closeFilePicker(){
+  filePicker.classList.remove('open');
+  filePickerOpen = false;
+}
+
+function fpCreate(){
+  closeFilePicker();
+  newTab();
+}
+
+document.addEventListener('click', e=>{
+  if(filePickerOpen && !filePicker.contains(e.target) && !e.target.classList.contains('btn-new')){
+    closeFilePicker();
+  }
+});
+
+// ════════════════════════════════════════
+// EXPLAINER (looplogic.js — not yet loaded)
+// ════════════════════════════════════════
+function toggleExplainer(){
+  const checks = [
+    { path:'explainer.html',      label:'explainer.html'      },
+    { path:'engine/looplogic.js', label:'engine/looplogic.js' },
+  ];
+  let pending = checks.length, missing = 0;
+
+  checks.forEach(c=>{
+    fetch(c.path, {method:'HEAD', cache:'no-cache'})
+      .then(r=>{ if(!r.ok) throw new Error(); })
+      .catch(()=>{ missing++; showToast(`⚠️ ${c.label} not found`); })
+      .finally(()=>{
+        pending--;
+        if(pending === 0 && missing === 0){
+          window.open('explainer.html', '_blank');
+          document.getElementById('explainerBtn').classList.add('active');
+          setTimeout(()=> document.getElementById('explainerBtn').classList.remove('active'), 1500);
+        }
+      });
+  });
+}
+
+function closeExplainer(){
+  document.getElementById('explainerBtn').classList.remove('active');
+}
+
+// Remove the postMessage listener — no longer needed
+
+
+function closeExplainer(){
+  const overlay = document.getElementById('explainerOverlay');
+  overlay.style.display = 'none';
+  document.getElementById('explainerFrame').src = '';
+  document.getElementById('explainerBtn').classList.remove('active');
+}
+
+// ════════════════════════════════════════
+// STORAGE
+// ════════════════════════════════════════
+function getWorkspaceState(){
+  saveEditorToTab();
+  return { tabs, folders, openTabIds, activeId, nextId, nextFolderId };
+}
+
+function manualSave(){
+  if(!window.PyBoltStorage){ showToast('⚠️ storage.js not loaded'); return; }
+  if(!ideSettings.autosave){ showToast('⚠️ Enable Storage in Settings first'); return; }
+  const ok = PyBoltStorage.save(getWorkspaceState());
+  if(ok){ saveTab(); workspaceDirty = false; showToast('💾 Workspace saved'); updateSavedAtLabel(); }
+  else  { showToast('⚠️ Save failed — localStorage unavailable'); }
+}
+
+function clearStorage(){
+  if(!window.PyBoltStorage){ showToast('⚠️ storage.js not loaded'); return; }
+  PyBoltStorage.clear();
+  showToast('🗑 Storage cleared');
+  updateSavedAtLabel();
+  ideLog('info', 'localStorage cleared');
+}
+
+function updateSavedAtLabel(){
+  if(!window.PyBoltStorage) return;
+  const el = document.getElementById('storageSavedAt');
+  if(!el) return;
+  const ts = PyBoltStorage.savedAt();
+  if(!ts){ el.textContent = 'Not saved yet'; return; }
+  const d = new Date(ts);
+  el.textContent = 'Last saved: ' + d.toLocaleTimeString();
+}
+
+let autosaveTimer   = null;
+let workspaceDirty  = false;
+
+function markDirty(){ workspaceDirty = true; }
+
+function setSaveBtn(enabled){
+  const btn = document.getElementById('saveBtn');
+  if(!btn) return;
+  btn.style.opacity = enabled ? '1' : '.4';
+  btn.style.cursor  = enabled ? 'pointer' : 'not-allowed';
+  btn.title = enabled ? 'Save workspace' : 'Save workspace (enable Storage to use)';
+}
+
+function scheduleAutosave(){
+  if(!ideSettings.autosave || !window.PyBoltStorage) return;
+  markDirty();
+}
+
+function startAutosaveInterval(){
+  clearInterval(autosaveTimer);
+  autosaveTimer = setInterval(()=>{
+    if(!ideSettings.autosave || !window.PyBoltStorage || !workspaceDirty) return;
+    saveTab(); // sync editor content and clear dirty dot
+    PyBoltStorage.save(getWorkspaceState());
+    workspaceDirty = false;
+    updateSavedAtLabel();
+  }, 10000);
+}
+
+function loadWorkspace(){
+  if(!window.PyBoltStorage) return false;
+  const data = PyBoltStorage.load();
+  if(!data) return false;
+  try {
+    tabs         = data.tabs;
+    folders      = data.folders || [];
+    openTabIds   = new Set(data.openTabIds || [data.activeId]);
+    activeId     = data.activeId;
+    nextId       = data.nextId || (Math.max(...data.tabs.map(t=>t.id)) + 1);
+    nextFolderId = data.nextFolderId || 1;
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
+// ════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════
+// Try to restore saved workspace before editor init
+const restoredFromStorage = loadWorkspace();
+
+initEditor();
+buildSnipGrid();
+
+// If we restored state, load the active tab's code into the editor
+if(restoredFromStorage){
+  const active = tabs.find(t=>t.id===activeId);
+  if(active) editor.setValue(active.code);
+  ideLog('info', 'Workspace restored from localStorage');
+}
+
+renderTabs();
+initPython();
+
+// Hook autosave dirty flag onto editor changes
+editor.on('change', ()=> scheduleAutosave());
+
+// Start 10s autosave interval
+startAutosaveInterval();
+
+// IDE Console startup messages
+setTimeout(()=>{
+  if(window.PyBoltVerifier){
+    ideLog('info','Loaded engine/verifier.js');
+  } else {
+    ideLog('warn','verifier.js not found — pre-run checks disabled');
+    ideSettings.verifier = false;
+  }
+  if(window.PyBoltAutocomplete){
+    PyBoltAutocomplete.attach(editor);
+    ideLog('info','Loaded engine/autocomplete.js');
+  } else {
+    ideLog('warn','autocomplete.js not found — inline completions disabled');
+    ideSettings.autocomplete = false;
+  }
+  if(window.PyBoltStorage){
+    ideLog('info','Loaded engine/storage.js');
+    updateSavedAtLabel();
+    setSaveBtn(ideSettings.autosave);
+  } else {
+    ideLog('warn','storage.js not found — workspace saving disabled');
+    ideSettings.autosave = false;
+    setSaveBtn(false);
+  }
+  ideLog('info','Brython runtime initialised');
+  ideLog('info','PyBolt ready');
+}, 300);
+</script>
+</body>
+</html>
