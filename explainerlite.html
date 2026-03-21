@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PyBolt Explainer</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<style>
+:root{
+  --bg:#0b0d13;--bg2:#11141c;--bg3:#181c28;--bg4:#1f2436;
+  --border:#252a40;--accent:#6c5ce7;--teal:#00cec9;
+  --red:#ff5f74;--yellow:#fdcb6e;--green:#00b894;
+  --text:#cdd6f4;--text2:#a6adc8;--text3:#585b70;
+  --mono:'JetBrains Mono',monospace;--ui:'Syne',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--ui);background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.hdr-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;letter-spacing:-.3px;}
+.hdr-mark{width:24px;height:24px;background:linear-gradient(135deg,var(--accent),#e84393);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 0 8px rgba(108,92,231,.4);}
+.hdr-logo em{color:var(--accent);font-style:normal;}
+.hdr-sub{font-size:11px;font-weight:600;color:var(--text3);border-left:1px solid var(--border);padding-left:10px;margin-left:2px;}
+.hdr-space{flex:1;}
+.close-btn{width:30px;height:30px;border-radius:7px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.close-btn:active{background:rgba(255,95,116,.2);color:var(--red);}
+
+/* ── CONTROL BAR ── */
+.ctrl-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.cb-btn{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-family:var(--ui);font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .12s;white-space:nowrap;}
+.cb-btn.primary{background:var(--accent);color:#fff;flex:1;}
+.cb-btn.primary:active{filter:brightness(.9);}
+.cb-btn.secondary{background:var(--bg4);color:var(--text2);border:1px solid var(--border);}
+.cb-btn.secondary:active{background:var(--bg3);}
+.cb-btn:disabled{opacity:.35;}
+.cb-btn.danger{color:var(--red);border-color:rgba(255,95,116,.3);}
+.speed-pill{display:flex;align-items:center;gap:5px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);}
+.speed-pill input[type=range]{width:56px;accent-color:var(--accent);}
+
+/* ── PROGRESS ── */
+.progress{height:3px;background:var(--bg4);flex-shrink:0;}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#a29bfe);transition:width .15s ease;}
+
+/* ── WARN BANNER ── */
+.warn-banner{display:none;padding:8px 14px;background:rgba(253,203,110,.07);border-bottom:1px solid rgba(253,203,110,.2);flex-shrink:0;}
+.warn-banner.on{display:block;}
+.warn-top{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+.warn-top-text{font-family:var(--mono);font-size:11px;color:var(--yellow);font-weight:700;flex:1;}
+.warn-chevron{font-size:9px;color:var(--yellow);transition:transform .15s;}
+.warn-chevron.open{transform:rotate(180deg);}
+.warn-details{display:none;margin-top:6px;}
+.warn-details.on{display:block;}
+.warn-line{display:flex;align-items:flex-start;gap:6px;padding:3px 0;font-family:var(--mono);font-size:10.5px;line-height:1.5;}
+.warn-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;flex-shrink:0;margin-top:1px;}
+.warn-msg{color:var(--text3);}
+
+/* ── BODY AREA (code + output) ── */
+.body-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── CODE PANEL (collapsible) ── */
+.code-panel{flex-shrink:0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;transition:height .2s ease;height:38vh;min-height:80px;}
+.code-panel.collapsed{height:38px;}
+.code-header{display:flex;align-items:center;padding:6px 14px;background:var(--bg2);cursor:pointer;user-select:none;flex-shrink:0;gap:8px;height:38px;}
+.code-header-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);flex:1;}
+.code-header-hint{font-size:9.5px;color:var(--text3);font-family:var(--mono);}
+.code-chevron{font-size:9px;color:var(--text3);transition:transform .2s;}
+.code-chevron.collapsed{transform:rotate(180deg);}
+.code-editor-wrap{flex:1;overflow:hidden;}
+
+/* ── OUTPUT PANEL ── */
+.out-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.out-header{display:flex;align-items:center;padding:0 14px;height:36px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;}
+.out-mode-btn{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);cursor:pointer;user-select:none;}
+.out-mode-btn:active{color:var(--text2);}
+.out-chevron{font-size:8px;transition:transform .15s;}
+.out-chevron.open{transform:rotate(180deg);}
+.out-mode-dd{position:absolute;top:calc(100% + 4px);left:14px;z-index:200;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.6);opacity:0;transform:scale(.96) translateY(-4px);transition:opacity .12s,transform .12s;pointer-events:none;}
+.out-mode-dd.open{opacity:1;transform:scale(1) translateY(0);pointer-events:all;}
+.dd-item{padding:8px 12px;border-radius:5px;font-family:var(--mono);font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.dd-item:active{background:var(--bg4);}
+.dd-item.active{color:var(--accent);}
+.dd-check{width:12px;font-size:10px;}
+
+/* ── STEP CARDS ── */
+.step-area{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+.step-idle{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:120px;gap:8px;color:var(--text3);font-family:var(--mono);font-size:11.5px;text-align:center;line-height:1.7;}
+.step-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex-shrink:0;}
+.step-card.active{border-color:var(--accent);}
+.step-card-head{padding:7px 12px;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.5px;}
+.step-num{background:var(--accent);color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;}
+.step-card-body{padding:9px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.7;}
+.step-code{color:var(--text2);margin-bottom:5px;}
+.step-explain{color:var(--text3);font-size:10.5px;line-height:1.6;}
+.step-output{margin-top:5px;padding:5px 9px;background:var(--bg2);border-radius:5px;color:var(--green);font-size:11px;}
+.step-skipped{color:var(--yellow);font-size:10.5px;font-style:italic;}
+
+/* ── FULL OUTPUT ── */
+.full-output-area{flex:1;overflow-y:auto;padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.8;display:none;}
+.full-output-area.on{display:block;}
+.fo-line{padding:1px 0;color:var(--text);}
+.fo-empty{color:var(--text3);font-style:italic;font-size:11px;}
+
+/* ── VARS SHEET (bottom slide-up) ── */
+.vars-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;cursor:pointer;user-select:none;}
+.vars-toggle-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);}
+.vars-toggle-badge{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.vars-toggle-chevron{font-size:9px;color:var(--text3);transition:transform .15s;}
+.vars-toggle-chevron.open{transform:rotate(180deg);}
+.vars-panel{max-height:0;overflow:hidden;transition:max-height .2s ease;background:var(--bg2);border-top:1px solid var(--border);}
+.vars-panel.open{max-height:160px;overflow-y:auto;}
+.vars-inner{padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px;}
+.var-chip{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;}
+.var-name{color:var(--accent);font-weight:600;}
+.var-eq{color:var(--text3);}
+.var-val{color:var(--text);}
+.vars-empty{font-family:var(--mono);font-size:11px;color:var(--text3);font-style:italic;}
+
+/* ── CODEMIRROR ── */
+.CodeMirror{height:100%!important;font-family:var(--mono)!important;font-size:12.5px!important;line-height:1.75!important;background:var(--bg)!important;color:#cdd6f4!important;}
+.CodeMirror-gutters{background:var(--bg2)!important;border-right:1px solid var(--border)!important;}
+.CodeMirror-linenumber{color:var(--text3)!important;font-size:10.5px;padding-right:6px;}
+.CodeMirror-cursor{border-left:2px solid var(--accent)!important;}
+.CodeMirror-selected{background:rgba(108,92,231,.22)!important;}
+.cm-keyword{color:#cba6f7!important}.cm-def{color:#89dceb!important}.cm-variable{color:#cdd6f4!important}
+.cm-string,.cm-string-2{color:#a6e3a1!important}.cm-comment{color:#585b70!important;font-style:italic}
+.cm-number{color:#fab387!important}.cm-operator{color:#89b4fa!important}
+.cm-builtin{color:#f38ba8!important}
+.ex-step-line{background:rgba(108,92,231,.18)!important;}
+.ex-unsupported-line{background:rgba(255,95,116,.08)!important;}
+
+/* ── SCROLLBARS ── */
+.step-area::-webkit-scrollbar,.full-output-area::-webkit-scrollbar,.vars-panel::-webkit-scrollbar{width:4px;}
+.step-area::-webkit-scrollbar-thumb,.full-output-area::-webkit-scrollbar-thumb,.vars-panel::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+.CodeMirror-vscrollbar::-webkit-scrollbar,.CodeMirror-hscrollbar::-webkit-scrollbar{width:4px;height:4px;}
+.CodeMirror-vscrollbar::-webkit-scrollbar-track,.CodeMirror-hscrollbar::-webkit-scrollbar-track{background:transparent;}
+.CodeMirror-vscrollbar::-webkit-scrollbar-thumb,.CodeMirror-hscrollbar::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+.CodeMirror-vscrollbar::-webkit-scrollbar-thumb:hover,.CodeMirror-hscrollbar::-webkit-scrollbar-thumb:hover{background:var(--border);}
+.CodeMirror-scroll::-webkit-scrollbar{width:4px;height:4px;}
+.CodeMirror-scroll::-webkit-scrollbar-track{background:transparent;}
+.CodeMirror-scroll::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+.CodeMirror-vscrollbar,.CodeMirror-hscrollbar,.CodeMirror-scroll{scrollbar-width:thin!important;scrollbar-color:var(--bg4) transparent!important;}
+
+/* ── LOADER ── */
+.ex-loader{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s ease;}
+.ex-loader.fade{opacity:0;pointer-events:none;}
+.ex-loader-logo{font-family:var(--ui);font-size:22px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:9px;}
+.ex-loader-logo svg{filter:drop-shadow(0 0 8px var(--accent));}
+.ex-loader-sub{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.ex-loader-bar-wrap{width:220px;height:3px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.ex-loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#a29bfe);border-radius:3px;animation:exBarFlow 1.5s linear forwards;}
+@keyframes exBarFlow{0%{width:0%;}100%{width:97%;}}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="ex-loader" id="exLoader">
+  <div class="ex-loader-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    PyBolt
+  </div>
+  <div class="ex-loader-bar-wrap"><div class="ex-loader-bar"></div></div>
+  <div class="ex-loader-sub">Loop Explainer</div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo"><div class="hdr-mark">⚡</div>Py<em>Bolt</em></div>
+  <div class="hdr-sub">Explainer</div>
+  <div class="hdr-space"></div>
+  <button class="close-btn" onclick="window.close()">✕</button>
+</div>
+
+<!-- WARN BANNER -->
+<div class="warn-banner" id="warnBanner">
+  <div class="warn-top" onclick="toggleWarnDetails()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fdcb6e" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span class="warn-top-text">Unsupported constructs detected — tap for details</span>
+    <span class="warn-chevron" id="warnChevron">▼</span>
+  </div>
+  <div class="warn-details" id="warnDetails"></div>
+</div>
+
+<!-- CONTROL BAR -->
+<div class="ctrl-bar">
+  <button class="cb-btn primary" id="btnPlay" onclick="togglePlay()">
+    <svg id="playIcon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <span id="playLabel">Run</span>
+  </button>
+  <button class="cb-btn secondary" id="btnStep" onclick="stepOnce()" disabled>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
+    Step
+  </button>
+  <button class="cb-btn secondary" id="btnReset" onclick="resetExplainer()" disabled>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+    Reset
+  </button>
+  <div class="speed-pill">
+    <input type="range" id="speedSlider" min="1" max="10" value="5" oninput="updateSpeed()">
+    <span id="speedLabel">1.0s</span>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+
+<!-- BODY -->
+<div class="body-area">
+
+  <!-- CODE PANEL (collapsible) -->
+  <div class="code-panel" id="codePanel">
+    <div class="code-header" id="codeHeader" onclick="toggleCode()">
+      <span class="code-header-label">Code</span>
+      <span class="code-header-hint" id="codeHint">tap to collapse</span>
+      <span class="code-chevron" id="codeChevron">▲</span>
+    </div>
+    <div class="code-editor-wrap"><textarea id="exEditor"></textarea></div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <div class="out-panel">
+    <div class="out-header">
+      <div class="out-mode-btn" id="outModeBtn" onclick="toggleOutDD(event)">
+        <span id="outModeLabel">Step Output</span>
+        <span class="out-chevron" id="outChevron">▼</span>
+      </div>
+      <div class="out-mode-dd" id="outModeDD">
+        <div class="dd-item active" id="ddStep" onclick="setOutputMode('step')">
+          <span class="dd-check" id="checkStep">✓</span>Step Output
+        </div>
+        <div class="dd-item" id="ddFull" onclick="setOutputMode('full')">
+          <span class="dd-check" id="checkFull"></span>Full Output
+        </div>
+      </div>
+    </div>
+
+    <div class="step-area" id="stepArea">
+      <div class="step-idle" id="stepIdle">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Press <b style="color:var(--accent)">Run</b> to start<br>
+        or <b style="color:var(--text2)">Step</b> line by line
+      </div>
+    </div>
+    <div class="full-output-area" id="fullOutputArea">
+      <div class="fo-empty">Run code to see full output</div>
+    </div>
+
+    <!-- VARS BOTTOM SHEET -->
+    <div class="vars-toggle" onclick="toggleVars()">
+      <span class="vars-toggle-label">Variables</span>
+      <span class="vars-toggle-badge" id="varsBadge">0</span>
+      <span class="vars-toggle-chevron" id="varsChevron">▲</span>
+    </div>
+    <div class="vars-panel" id="varsPanel">
+      <div class="vars-inner" id="varsGrid"><span class="vars-empty">No variables yet</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="engine/looplogic.js"></script>
+<script>
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// ── Code panel collapse ───────────────────────────────────
+let codeCollapsed = false;
+function toggleCode(){
+  codeCollapsed = !codeCollapsed;
+  const panel = document.getElementById('codePanel');
+  const chev  = document.getElementById('codeChevron');
+  const hint  = document.getElementById('codeHint');
+  panel.classList.toggle('collapsed', codeCollapsed);
+  chev.classList.toggle('collapsed', codeCollapsed);
+  hint.textContent = codeCollapsed ? 'tap to expand' : 'tap to collapse';
+  if(!codeCollapsed) setTimeout(()=>exEditor.refresh(), 210);
+}
+
+// ── Warn banner collapse ──────────────────────────────────
+let warnOpen = false;
+function toggleWarnDetails(){
+  warnOpen = !warnOpen;
+  document.getElementById('warnDetails').classList.toggle('on', warnOpen);
+  document.getElementById('warnChevron').classList.toggle('open', warnOpen);
+}
+
+// ── Vars panel ────────────────────────────────────────────
+let varsOpen = false;
+function toggleVars(){
+  varsOpen = !varsOpen;
+  document.getElementById('varsPanel').classList.toggle('open', varsOpen);
+  document.getElementById('varsChevron').classList.toggle('open', varsOpen);
+}
+
+// ── Output mode dropdown ──────────────────────────────────
+let outputMode = 'step';
+let outDDOpen  = false;
+
+function toggleOutDD(e){
+  e.stopPropagation();
+  outDDOpen = !outDDOpen;
+  document.getElementById('outModeDD').classList.toggle('open', outDDOpen);
+  document.getElementById('outChevron').classList.toggle('open', outDDOpen);
+}
+
+function setOutputMode(mode){
+  outputMode = mode;
+  outDDOpen  = false;
+  document.getElementById('outModeDD').classList.remove('open');
+  document.getElementById('outChevron').classList.remove('open');
+  document.getElementById('outModeLabel').textContent = mode==='step' ? 'Step Output' : 'Full Output';
+  document.getElementById('ddStep').classList.toggle('active', mode==='step');
+  document.getElementById('ddFull').classList.toggle('active', mode==='full');
+  document.getElementById('checkStep').textContent = mode==='step' ? '✓' : '';
+  document.getElementById('checkFull').textContent = mode==='full' ? '✓' : '';
+  document.getElementById('stepArea').style.display       = mode==='step' ? 'flex' : 'none';
+  document.getElementById('fullOutputArea').style.display = mode==='full' ? 'block' : 'none';
+  if(mode==='full' && stepState) renderFullOutput(stepState);
+}
+
+document.addEventListener('click', e=>{
+  if(!outDDOpen) return;
+  const dd = document.getElementById('outModeDD');
+  if(!dd.contains(e.target) && !document.getElementById('outModeBtn').contains(e.target)){
+    outDDOpen = false;
+    dd.classList.remove('open');
+    document.getElementById('outChevron').classList.remove('open');
+  }
+});
+
+// ── Speed ─────────────────────────────────────────────────
+let stepDelayMs = 1000;
+function updateSpeed(){
+  const v = parseInt(document.getElementById('speedSlider').value);
+  stepDelayMs = Math.round(2000 - (v-1)*(2000-150)/9);
+  document.getElementById('speedLabel').textContent = (stepDelayMs/1000).toFixed(1)+'s';
+}
+
+// ── Unsupported detection ─────────────────────────────────
+const UNSUPPORTED = [
+  { re:/^\s*import\s/,                                        label:'import',            msg:'Imports are not supported.' },
+  { re:/^\s*from\s+\w+\s+import/,                            label:'from … import',     msg:'Imports are not supported.' },
+  { re:/^\s*def\s+\w+/,                                      label:'def',               msg:'Function definitions will be skipped.' },
+  { re:/^\s*class\s+\w+/,                                    label:'class',             msg:'Classes are not supported.' },
+  { re:/^\s*@\w+/,                                           label:'decorator',         msg:'Decorators are not supported.' },
+  { re:/^\s*(async|await)\s/,                                label:'async/await',       msg:'Async code is not supported.' },
+  { re:/^\s*raise\s/,                                        label:'raise',             msg:'raise is not supported.' },
+  { re:/^\s*try\s*:/,                                        label:'try/except',        msg:'Exception handling is not supported.' },
+  { re:/^\s*except/,                                         label:'except',            msg:'Exception handling is not supported.' },
+  { re:/^\s*with\s/,                                         label:'with',              msg:'Context managers are not supported.' },
+  { re:/^\s*yield\s/,                                        label:'yield',             msg:'Generators are not supported.' },
+  { re:/\[.*for.*in.*\]/,                                    label:'list comprehension',msg:'Use a for loop instead.' },
+  { re:/^\s*[a-zA-Z_]\w*\s*=\s*\{[^}]*:[^}]*\}/,           label:'dict (limited)',    msg:'Iteration loops over keys only. .items()/.values() not available.', warn:true },
+];
+
+let unsupportedLines = [];
+function validateCode(){
+  const lines = exEditor.getValue().split('\n');
+  unsupportedLines = [];
+  for(let i=0;i<exEditor.lineCount();i++) exEditor.removeLineClass(i,'background','ex-unsupported-line');
+  lines.forEach((line,i)=>{
+    if(!line.trim()||line.trim().startsWith('#')) return;
+    for(const rule of UNSUPPORTED){
+      if(rule.re.test(line)){
+        unsupportedLines.push({lineNo:i+1,lineIdx:i,label:rule.label,msg:rule.msg,warn:rule.warn||false});
+        if(!rule.warn) exEditor.addLineClass(i,'background','ex-unsupported-line');
+        break;
+      }
+    }
+  });
+  renderWarnings();
+}
+
+function renderWarnings(){
+  const banner = document.getElementById('warnBanner');
+  const det    = document.getElementById('warnDetails');
+  if(!unsupportedLines.length){ banner.classList.remove('on'); return; }
+  banner.classList.add('on');
+  det.innerHTML = unsupportedLines.map(u=>{
+    const col = u.warn ? 'var(--teal)' : 'var(--red)';
+    const bgs = u.warn ? 'background:rgba(0,206,201,.15);color:var(--teal);border:1px solid rgba(0,206,201,.3)'
+                       : 'background:rgba(255,95,116,.15);color:var(--red);border:1px solid rgba(255,95,116,.25)';
+    return `<div class="warn-line">
+      <span class="warn-badge" style="${bgs}">L${u.lineNo}</span>
+      <span style="color:${col};font-weight:700">${esc(u.label)}</span>
+      <span class="warn-msg">— ${esc(u.msg)}</span>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Step engine (mirrors explainer.html) ─────────────────
+let stepState=null, autoTimer=null, isPlaying=false, stepMarkers=[], stepCount=0;
+
+function resetExplainer(){
+  clearTimeout(autoTimer); isPlaying=false; stepState=null; stepCount=0;
+  stepMarkers.forEach(m=>m.clear()); stepMarkers=[];
+  for(let i=0;i<exEditor.lineCount();i++) exEditor.removeLineClass(i,'background','ex-step-line');
+  document.getElementById('stepIdle').style.display='flex';
+  document.querySelectorAll('.step-card').forEach(c=>c.remove());
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('varsGrid').innerHTML='<span class="vars-empty">No variables yet</span>';
+  document.getElementById('varsBadge').textContent='0';
+  document.getElementById('fullOutputArea').innerHTML='<div class="fo-empty">Run code to see full output</div>';
+  document.getElementById('btnStep').disabled=true;
+  document.getElementById('btnReset').disabled=true;
+  setPlayBtn(false);
+}
+
+function togglePlay(){
+  if(!stepState){
+    const unsSet = new Set(unsupportedLines.map(u=>u.lineIdx));
+    stepState = LoopLogic.compile(exEditor.getValue(), unsSet);
+    document.getElementById('stepIdle').style.display='none';
+    document.getElementById('btnStep').disabled=false;
+    document.getElementById('btnReset').disabled=false;
+    // Collapse code to give more room
+    if(!codeCollapsed) toggleCode();
+  }
+  if(isPlaying){ clearTimeout(autoTimer); isPlaying=false; setPlayBtn(false); }
+  else          { isPlaying=true; setPlayBtn(true); scheduleNext(); }
+}
+
+function scheduleNext(){
+  if(!isPlaying) return;
+  autoTimer = setTimeout(()=>{ if(!stepOnce()) scheduleNext(); }, stepDelayMs);
+}
+
+function setPlayBtn(playing){
+  document.getElementById('playIcon').innerHTML = playing
+    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+    : '<polygon points="5 3 19 12 5 21 5 3"/>';
+  document.getElementById('playLabel').textContent = playing ? 'Pause' : (stepState ? 'Resume' : 'Run');
+}
+
+function stepOnce(){
+  if(!stepState){
+    const unsSet = new Set(unsupportedLines.map(u=>u.lineIdx));
+    stepState = LoopLogic.compile(exEditor.getValue(), unsSet);
+    document.getElementById('stepIdle').style.display='none';
+    document.getElementById('btnStep').disabled=false;
+    document.getElementById('btnReset').disabled=false;
+    if(!codeCollapsed) toggleCode();
+  }
+  const result = LoopLogic.step(stepState);
+  if(!result||result.done){
+    appendCard({lineNo:'—',code:'',explain:'✓ All lines executed.',output:'',type:'done'}, stepState);
+    document.getElementById('progressFill').style.width='100%';
+    document.getElementById('btnStep').disabled=true;
+    clearTimeout(autoTimer); isPlaying=false; setPlayBtn(false);
+    return true;
+  }
+  // Highlight line
+  stepMarkers.forEach(m=>m.clear()); stepMarkers=[];
+  for(let i=0;i<exEditor.lineCount();i++) exEditor.removeLineClass(i,'background','ex-step-line');
+  exEditor.addLineClass(result.lineIdx,'background','ex-step-line');
+  // Progress
+  document.getElementById('progressFill').style.width=(result.lineIdx/(stepState.totalLines||1)*100)+'%';
+  appendCard(result, stepState);
+  renderVars(stepState.env);
+  stepCount++;
+  return false;
+}
+
+function appendCard(result, state){
+  document.getElementById('stepIdle').style.display='none';
+  const area = document.getElementById('stepArea');
+  area.querySelectorAll('.step-card').forEach(c=>c.classList.remove('active'));
+  const card = document.createElement('div');
+  card.className='step-card active';
+  let bodyHtml='';
+  if(result.type==='done'){
+    bodyHtml=`<div class="step-explain" style="color:var(--green)">✓ All lines executed.</div>`;
+  } else if(result.type==='skipped'){
+    bodyHtml=`<div class="step-code">${esc(result.code)}</div><div class="step-skipped">⚠ Skipped — ${esc(result.explain)}</div>`;
+  } else {
+    bodyHtml=`<div class="step-code">${esc(result.code)}</div><div class="step-explain">${esc(result.explain)}</div>${result.output?`<div class="step-output">▶ ${esc(result.output)}</div>`:''}`;
+  }
+  card.innerHTML=`
+    <div class="step-card-head">
+      ${result.type!=='done'?`<span class="step-num">${stepCount+1}</span>`:''} 
+      ${result.lineNo!=='—'&&result.type!=='done'?`Line ${result.lineNo}`:''}
+    </div>
+    <div class="step-card-body">${bodyHtml}</div>`;
+  area.appendChild(card);
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(outputMode==='full' && state) renderFullOutput(state);
+}
+
+function renderVars(env){
+  const grid  = document.getElementById('varsGrid');
+  const badge = document.getElementById('varsBadge');
+  if(!env||!Object.keys(env).length){
+    grid.innerHTML='<span class="vars-empty">No variables yet</span>';
+    badge.textContent='0'; return;
+  }
+  badge.textContent = Object.keys(env).length;
+  grid.innerHTML = Object.entries(env).map(([k,v])=>`
+    <div class="var-chip"><span class="var-name">${esc(k)}</span><span class="var-eq">=</span><span class="var-val">${esc(reprVal(v))}</span></div>`
+  ).join('');
+}
+
+function renderFullOutput(state){
+  const area = document.getElementById('fullOutputArea');
+  if(!state||!state.output||!state.output.length){ area.innerHTML='<div class="fo-empty">No output yet</div>'; return; }
+  area.innerHTML = state.output.map(l=>`<div class="fo-line">${esc(l)}</div>`).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+function reprVal(v){
+  if(v===null||v===undefined) return 'None';
+  if(typeof v==='string') return `"${v}"`;
+  if(Array.isArray(v)) return '['+v.map(reprVal).join(', ')+']';
+  if(typeof v==='object') return '{'+Object.entries(v).map(([k,val])=>`${reprVal(k)}: ${reprVal(val)}`).join(', ')+'}';
+  if(typeof v==='boolean') return v?'True':'False';
+  return String(v);
+}
+
+// ── CodeMirror init ───────────────────────────────────────
+const DEFAULT_CODE =
+`# PyBolt Loop Explainer
+score = 0
+numbers = [4, 15, 8, 23, 42]
+
+for n in numbers:
+    score = score + n
+    if score > 40:
+        print("High!", score)
+
+print("Total:", score)
+
+i = 1
+result = 1
+while i <= 5:
+    result = result * i
+    i = i + 1
+
+print("5! =", result)
+`;
+
+let exEditor;
+window.addEventListener('DOMContentLoaded', ()=>{
+  exEditor = CodeMirror.fromTextArea(document.getElementById('exEditor'),{
+    mode:'python', lineNumbers:true, indentUnit:4, tabSize:4, indentWithTabs:false,
+  });
+  exEditor.setValue(DEFAULT_CODE);
+  exEditor.clearHistory();
+  exEditor.refresh();
+  exEditor.on('change', ()=>{ if(stepState) resetExplainer(); validateCode(); });
+  validateCode();
+  updateSpeed();
+  // Dismiss loader
+  setTimeout(()=>{
+    const l = document.getElementById('exLoader');
+    l.classList.add('fade');
+    setTimeout(()=>l.remove(), 380);
+  }, 1500);
+});
+</script>
+</body>
+</html>
