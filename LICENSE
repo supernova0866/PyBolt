@@ -1,0 +1,32 @@
+Copyright (c) 2026 supernova0866. All rights reserved.
+
+This software and its source code ("PyBolt") are made publicly visible for
+learning and reference purposes only.
+
+You may NOT, without explicit written permission from the copyright holder:
+
+  - Copy, reproduce, or redistribute this software or any portion of it
+  - Modify, adapt, or create derivative works based on this software
+  - Publish, sublicense, sell, or otherwise make this software available
+    to others, in whole or in part
+  - Use this software or its source code in any other project, product,
+    or service, whether commercial or non-commercial
+
+You MAY:
+
+  - View and read the source code for personal learning and reference
+  - Link to this repository
+
+This software is provided "as is", without warranty of any kind, express
+or implied. The copyright holder shall not be liable for any claim, damages,
+or other liability arising from the use or attempted use of this software.
+
+Third-party components included in or used by this project retain their
+own licenses:
+
+  - Brython (https://brython.info) — MIT License
+  - CodeMirror (https://codemirror.net) — MIT License
+  - JetBrains Mono — SIL Open Font License 1.1
+  - Syne — SIL Open Font License 1.1
+
+For permissions beyond the scope of this license, contact the author.
