@@ -89,4 +89,4 @@ Python support is provided by [Brython](https://brython.info/). The editor is [C
 
 Source code is visible for learning and reference purposes. Redistribution, modification, or republishing of this project in whole or in part, with or without modification, is not permitted without explicit written permission from the author.
 
-See `LICENSE` for full terms.
+See [`LICENSE`](https://github.com/supernova0866/PyBolt/blob/main/LICENSE) for full terms.
