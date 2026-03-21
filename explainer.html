@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PyBolt Explainer</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<style>
+:root{
+  --bg:#0b0d13;--bg2:#11141c;--bg3:#181c28;--bg4:#1f2436;
+  --border:#252a40;--accent:#6c5ce7;--teal:#00cec9;
+  --red:#ff5f74;--yellow:#fdcb6e;--green:#00b894;
+  --text:#cdd6f4;--text2:#a6adc8;--text3:#585b70;
+  --mono:'JetBrains Mono',monospace;--ui:'Syne',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--ui);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── HEADER ── */
+.ex-header{display:flex;align-items:center;gap:14px;padding:0 14px;height:46px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg2);}
+.ex-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;letter-spacing:-.3px;white-space:nowrap;user-select:none;}
+.ex-logo-mark{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),#e84393);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 10px rgba(108,92,231,.45);flex-shrink:0;}
+.ex-logo em{color:var(--accent);font-style:normal;}
+.ex-title{font-size:12px;font-weight:600;color:var(--text3);border-left:1px solid var(--border);padding-left:12px;margin-left:2px;}
+.ex-spacer{flex:1;}
+.ex-ctrl{display:flex;align-items:center;gap:6px;}
+.ctrl-btn{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ui);font-size:11.5px;font-weight:700;cursor:pointer;border:none;transition:all .12s;}
+.ctrl-btn.primary{background:var(--accent);color:#fff;}
+.ctrl-btn.primary:hover{filter:brightness(1.1);}
+.ctrl-btn.secondary{background:var(--bg4);color:var(--text2);border:1px solid var(--border);}
+.ctrl-btn.secondary:hover{color:var(--text);background:var(--bg3);}
+.ctrl-btn:disabled{opacity:.35;cursor:not-allowed;filter:none!important;}
+.speed-wrap{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3);font-family:var(--mono);}
+.speed-wrap input[type=range]{width:72px;accent-color:var(--accent);}
+
+/* ── MAIN LAYOUT ── */
+.ex-main{display:flex;flex:1;overflow:hidden;}
+
+/* ── LEFT: EDITOR PANE ── */
+.ex-editor-pane{width:52%;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;}
+.ex-pane-title{padding:7px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.ex-editor-wrap{flex:1;overflow:hidden;position:relative;}
+
+/* ── WARNING BANNER ── */
+.warn-banner{display:none;align-items:flex-start;gap:9px;padding:8px 14px;background:rgba(253,203,110,.07);border-bottom:1px solid rgba(253,203,110,.2);flex-shrink:0;}
+.warn-banner.on{display:flex;}
+.warn-icon{flex-shrink:0;margin-top:1px;}
+.warn-text{font-family:var(--mono);font-size:11px;color:var(--yellow);line-height:1.6;flex:1;}
+.warn-lines{margin-top:4px;}
+.warn-line{display:flex;align-items:center;gap:6px;padding:2px 0;}
+.warn-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:rgba(255,95,116,.15);color:var(--red);border:1px solid rgba(255,95,116,.25);}
+
+/* ── RIGHT: EXPLAINER PANE ── */
+.ex-right-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── STEP DISPLAY ── */
+.step-area{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;align-items:stretch;}
+.step-idle{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:200px;gap:10px;color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;}
+.step-idle svg{opacity:.3;}
+.step-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex-shrink:0;}
+.step-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.step-card-head{padding:9px 13px;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.5px;}
+.step-card-head .step-num{background:var(--accent);color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;}
+.step-card-body{padding:10px 13px;font-family:var(--mono);font-size:12px;line-height:1.7;}
+.step-code{color:var(--text2);margin-bottom:6px;font-size:11.5px;}
+.step-explain{color:var(--text3);font-size:11px;line-height:1.6;}
+.step-output{margin-top:6px;padding:6px 10px;background:var(--bg2);border-radius:6px;color:var(--green);font-size:11.5px;}
+.step-skipped{color:var(--yellow);font-size:11px;font-style:italic;}
+
+/* ── VARS TABLE ── */
+.vars-area{padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0;max-height:160px;overflow-y:auto;background:var(--bg2);}
+.vars-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:8px;}
+.vars-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.var-chip{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;}
+.var-name{color:var(--accent);font-weight:600;}
+.var-eq{color:var(--text3);}
+.var-val{color:var(--text);}
+
+/* ── OUTPUT MODE DROPDOWN ── */
+.pane-title-wrap{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;position:relative;}
+.pane-title-left{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);cursor:pointer;user-select:none;}
+.pane-title-left:hover{color:var(--text2);}
+.pane-chevron{font-size:8px;transition:transform .15s;color:var(--text3);}
+.pane-chevron.open{transform:rotate(180deg);}
+.output-mode-dd{position:absolute;top:calc(100% + 4px);left:14px;z-index:500;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transform:scale(.95) translateY(-4px);transition:opacity .12s,transform .12s;pointer-events:none;}
+.output-mode-dd.open{opacity:1;transform:scale(1) translateY(0);pointer-events:all;}
+.dd-item{padding:7px 12px;border-radius:5px;font-family:var(--mono);font-size:11.5px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s;}
+.dd-item:hover{background:var(--bg4);color:var(--text);}
+.dd-item.active{color:var(--accent);}
+.dd-check{font-size:10px;width:12px;}
+
+/* ── FULL OUTPUT VIEW ── */
+.full-output-area{flex:1;overflow-y:auto;padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.8;display:none;}
+.full-output-area.on{display:block;}
+.fo-line{padding:1px 0;}
+.fo-line.out{color:var(--text);}
+.fo-line.err{color:var(--red);}
+.fo-empty{color:var(--text3);font-style:italic;font-size:11px;}
+.full-output-area::-webkit-scrollbar{width:6px;}
+.full-output-area::-webkit-scrollbar-track{background:transparent;}
+.full-output-area::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:6px;}
+.full-output-area::-webkit-scrollbar-thumb:hover{background:var(--border);}
+.step-area::-webkit-scrollbar,
+.vars-area::-webkit-scrollbar,
+.CodeMirror-scroll::-webkit-scrollbar,
+.CodeMirror-vscrollbar::-webkit-scrollbar,
+.CodeMirror-hscrollbar::-webkit-scrollbar{width:6px;height:6px;}
+.step-area::-webkit-scrollbar-track,
+.vars-area::-webkit-scrollbar-track,
+.CodeMirror-scroll::-webkit-scrollbar-track,
+.CodeMirror-vscrollbar::-webkit-scrollbar-track,
+.CodeMirror-hscrollbar::-webkit-scrollbar-track{background:transparent;}
+.step-area::-webkit-scrollbar-thumb,
+.vars-area::-webkit-scrollbar-thumb,
+.CodeMirror-scroll::-webkit-scrollbar-thumb,
+.CodeMirror-vscrollbar::-webkit-scrollbar-thumb,
+.CodeMirror-hscrollbar::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:6px;}
+.step-area::-webkit-scrollbar-thumb:hover,
+.vars-area::-webkit-scrollbar-thumb:hover,
+.CodeMirror-vscrollbar::-webkit-scrollbar-thumb:hover,
+.CodeMirror-hscrollbar::-webkit-scrollbar-thumb:hover{background:var(--border);}
+.CodeMirror-scroll{scrollbar-width:thin!important;scrollbar-color:var(--bg4) transparent!important;}
+.CodeMirror-vscrollbar,.CodeMirror-hscrollbar{scrollbar-width:thin!important;scrollbar-color:var(--bg4) transparent!important;}
+.vars-empty{font-family:var(--mono);font-size:11px;color:var(--text3);font-style:italic;}
+
+/* ── PROGRESS BAR ── */
+.ex-progress{height:3px;background:var(--bg4);flex-shrink:0;}
+.ex-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a29bfe);width:0%;transition:width .2s ease;}
+
+/* ── CODEMIRROR ── */
+.CodeMirror{height:100%!important;font-family:var(--mono)!important;font-size:13px!important;line-height:1.75!important;background:var(--bg)!important;color:#cdd6f4!important;}
+.CodeMirror-gutters{background:var(--bg2)!important;border-right:1px solid var(--border)!important;}
+.CodeMirror-linenumber{color:var(--text3)!important;font-size:11px;padding-right:8px;}
+.CodeMirror-activeline-background{background:rgba(108,92,231,.055)!important;}
+.CodeMirror-cursor{border-left:2px solid var(--accent)!important;}
+.CodeMirror-selected{background:rgba(108,92,231,.22)!important;}
+.cm-keyword{color:#cba6f7!important}.cm-def{color:#89dceb!important}.cm-variable{color:#cdd6f4!important}
+.cm-string,.cm-string-2{color:#a6e3a1!important}.cm-comment{color:#585b70!important;font-style:italic}
+.cm-number{color:#fab387!important}.cm-operator{color:#89b4fa!important}
+.cm-builtin{color:#f38ba8!important}
+/* Step highlight */
+.ex-step-line{background:rgba(108,92,231,.18)!important;}
+.ex-step-line-marker{background:var(--accent);width:3px!important;margin-left:2px;}
+/* Unsupported line */
+.ex-unsupported-line{background:rgba(255,95,116,.08)!important;}
+/* ── EXPLAINER LOADER ── */
+.ex-loader{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .35s ease;}
+.ex-loader.fade{opacity:0;pointer-events:none;}
+.ex-loader-logo{font-family:var(--ui);font-size:22px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:9px;}
+.ex-loader-logo svg{filter:drop-shadow(0 0 8px var(--accent));}
+.ex-loader-sub{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.ex-loader-bar-wrap{width:260px;height:3px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.ex-loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#a29bfe);border-radius:3px;animation:exBarFlow 1.5s linear forwards;}
+@keyframes exBarFlow{0%{width:0%;}100%{width:97%;}}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="ex-loader" id="exLoader">
+  <div class="ex-loader-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    PyBolt
+  </div>
+  <div class="ex-loader-bar-wrap"><div class="ex-loader-bar"></div></div>
+  <div class="ex-loader-sub">Loop Explainer</div>
+</div>
+
+<!-- HEADER -->
+<div class="ex-header">
+  <div class="ex-logo"><div class="ex-logo-mark">⚡</div>Py<em>Bolt</em></div>
+  <div class="ex-title">Loop Explainer</div>
+  <div class="ex-spacer"></div>
+  <div class="ex-ctrl">
+    <div class="speed-wrap">
+      <span>Speed</span>
+      <input type="range" id="speedSlider" min="1" max="10" value="5" oninput="updateSpeed()">
+      <span id="speedLabel">1.0s</span>
+    </div>
+    <button class="ctrl-btn secondary" id="btnStep" onclick="stepOnce()" disabled>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/><line x1="19" y1="3" x2="19" y2="21"/></svg>
+      Step
+    </button>
+    <button class="ctrl-btn primary" id="btnPlay" onclick="togglePlay()">
+      <svg id="playIcon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span id="playLabel">Run</span>
+    </button>
+    <button class="ctrl-btn secondary" id="btnReset" onclick="resetExplainer()" disabled>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+      Reset
+    </button>
+    <div style="width:1px;height:20px;background:var(--border);margin:0 2px;flex-shrink:0;"></div>
+    <button class="ctrl-btn secondary" onclick="closeFromIframe()" title="Close Explainer" style="padding:5px 10px;color:var(--red);border-color:rgba(255,95,116,.3);">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Close
+    </button>
+  </div>
+</div>
+<div class="ex-progress"><div class="ex-progress-fill" id="progressFill"></div></div>
+
+<!-- MAIN -->
+<div class="ex-main">
+
+  <!-- LEFT: editor + warnings -->
+  <div class="ex-editor-pane">
+    <div class="ex-pane-title">Code</div>
+    <div class="warn-banner" id="warnBanner">
+      <div class="warn-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fdcb6e" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="warn-text">
+        <b>Unsupported constructs detected</b> — the Explainer only handles basic Python.<br>
+        <span style="color:var(--text3)">Highlighted lines will be skipped. Supported: variables, print(), if/elif/else, for/while loops, arithmetic.</span>
+        <div class="warn-lines" id="warnLines"></div>
+      </div>
+    </div>
+    <div class="ex-editor-wrap"><textarea id="exEditor"></textarea></div>
+  </div>
+
+  <!-- RIGHT: step output + vars -->
+  <div class="ex-right-pane">
+    <div class="pane-title-wrap">
+      <div class="pane-title-left" id="outputModeBtn" onclick="toggleOutputDD(event)">
+        <span id="outputModeLabel">Step Output</span>
+        <span class="pane-chevron" id="outputChevron">▼</span>
+      </div>
+      <div class="output-mode-dd" id="outputModeDD">
+        <div class="dd-item active" id="ddStep" onclick="setOutputMode('step')">
+          <span class="dd-check" id="checkStep">✓</span>Step Output
+        </div>
+        <div class="dd-item" id="ddFull" onclick="setOutputMode('full')">
+          <span class="dd-check" id="checkFull"></span>Full Output
+        </div>
+      </div>
+    </div>
+    <div class="step-area" id="stepArea">
+      <div class="step-idle" id="stepIdle">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Press <b style="color:var(--accent)">Run</b> to start the explainer<br>
+        or <b style="color:var(--text2)">Step</b> to go one line at a time
+      </div>
+    </div>
+    <div class="full-output-area" id="fullOutputArea">
+      <div class="fo-empty">Run code to see full output</div>
+    </div>
+    <div class="vars-area" id="varsArea">
+      <div class="vars-title">Variables</div>
+      <div class="vars-grid" id="varsGrid"><span class="vars-empty">No variables yet</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="engine/looplogic.js"></script>
+<script>
+// ── Close — tell parent to close the overlay ──────────────
+// ── Context menu — disabled everywhere ───────────────────
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// ── Output mode ───────────────────────────────────────────
+let outputMode = 'step';
+let ddOpen = false;
+
+function toggleOutputDD(e){
+  e.stopPropagation();
+  ddOpen = !ddOpen;
+  document.getElementById('outputModeDD').classList.toggle('open', ddOpen);
+  document.getElementById('outputChevron').classList.toggle('open', ddOpen);
+}
+
+function setOutputMode(mode){
+  outputMode = mode;
+  ddOpen = false;
+  document.getElementById('outputModeDD').classList.remove('open');
+  document.getElementById('outputChevron').classList.remove('open');
+  document.getElementById('outputModeLabel').textContent = mode==='step' ? 'Step Output' : 'Full Output';
+  document.getElementById('ddStep').classList.toggle('active', mode==='step');
+  document.getElementById('ddFull').classList.toggle('active', mode==='full');
+  document.getElementById('checkStep').textContent = mode==='step' ? '✓' : '';
+  document.getElementById('checkFull').textContent = mode==='full' ? '✓' : '';
+  document.getElementById('stepArea').style.display       = mode==='step' ? 'flex' : 'none';
+  document.getElementById('fullOutputArea').style.display = mode==='full' ? 'block' : 'none';
+  if(mode==='full' && stepState) renderFullOutput(stepState);
+}
+
+document.addEventListener('click', e=>{
+  if(!ddOpen) return;
+  const dd  = document.getElementById('outputModeDD');
+  const btn = document.getElementById('outputModeBtn');
+  if(!dd.contains(e.target) && !btn.contains(e.target)){
+    ddOpen = false;
+    dd.classList.remove('open');
+    document.getElementById('outputChevron').classList.remove('open');
+  }
+});
+
+function renderFullOutput(state){
+  const area = document.getElementById('fullOutputArea');
+  if(!state || !state.output || state.output.length === 0){
+    area.innerHTML = '<div class="fo-empty">No output yet</div>';
+    return;
+  }
+  area.innerHTML = state.output.map(line =>
+    `<div class="fo-line out">${esc(line)}</div>`
+  ).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+function closeFromIframe(){
+  window.close();
+  setTimeout(()=>{ document.title = '(close this tab)'; }, 300);
+}
+
+const DEFAULT_CODE =
+`# PyBolt Loop Explainer — example
+# Edit this code or paste your own!
+
+score = 0
+high = 80
+
+numbers = [4, 15, 8, 23, 42, 7, 16]
+
+for n in numbers:
+    score = score + n
+    if score > high:
+        high = score
+
+print("Total score:", score)
+print("High score:", high)
+
+i = 1
+result = 1
+while i <= 5:
+    result = result * i
+    i = i + 1
+
+print("5! =", result)
+`;
+
+// ── CodeMirror setup ──────────────────────────────────────
+let exEditor;
+window.addEventListener('DOMContentLoaded', ()=>{
+  exEditor = CodeMirror.fromTextArea(document.getElementById('exEditor'),{
+    mode:'python', lineNumbers:true, styleActiveLine:false,
+    indentUnit:4, tabSize:4, indentWithTabs:false,
+    theme:'default',
+  });
+
+  // Always start with the explainer's own example code
+  exEditor.setValue(DEFAULT_CODE);
+  exEditor.clearHistory();
+  exEditor.refresh();
+
+  exEditor.on('change', ()=>{
+    if(stepState) resetExplainer();
+    validateCode();
+  });
+
+  validateCode();
+  updateSpeed();
+
+  // Dismiss loader after 1.5s
+  setTimeout(()=>{
+    const loader = document.getElementById('exLoader');
+    loader.classList.add('fade');
+    setTimeout(()=>loader.remove(), 380);
+  }, 1500);
+});
+
+// ── Unsupported construct detection ──────────────────────
+const UNSUPPORTED = [
+  { re:/^\s*import\s/,          label:'import',          msg:'Imports are not supported — the Explainer runs in pure JS. No modules available.' },
+  { re:/^\s*from\s+\w+\s+import/,label:'from … import',  msg:'Imports are not supported — the Explainer runs in pure JS.' },
+  { re:/^\s*def\s+\w+/,         label:'def',             msg:'Function definitions are not executed — calls to them will be skipped.' },
+  { re:/^\s*class\s+\w+/,       label:'class',           msg:'Classes are not supported.' },
+  { re:/^\s*@\w+/,              label:'decorator',       msg:'Decorators are not supported.' },
+  { re:/^\s*(async|await)\s/,   label:'async/await',     msg:'Async code is not supported.' },
+  { re:/^\s*raise\s/,           label:'raise',           msg:'raise is not supported.' },
+  { re:/^\s*try\s*:/,           label:'try/except',      msg:'Exception handling is not supported.' },
+  { re:/^\s*except/,            label:'except',          msg:'Exception handling is not supported.' },
+  { re:/^\s*with\s/,            label:'with',            msg:'Context managers are not supported.' },
+  { re:/^\s*yield\s/,           label:'yield',           msg:'Generators are not supported.' },
+  { re:/^\s*lambda\s/,          label:'lambda',          msg:'Lambda is not supported as a statement.' },
+  { re:/\[.*for.*in.*\]/,       label:'list comprehension', msg:'List comprehensions are not supported — use a for loop instead.' },
+  // Dict — warn but don't block (it works, just limited)
+  { re:/^\s*[a-zA-Z_]\w*\s*=\s*\{[^}]*:[^}]*\}/, label:'dict (limited)', msg:'Dicts are partially supported — iteration loops over keys only. Methods like .items() and .values() are not available in the Explainer.', warn:true },
+];
+
+let unsupportedLines = []; // [{lineNo, label, msg}]
+
+function validateCode(){
+  const lines = exEditor.getValue().split('\n');
+  unsupportedLines = [];
+
+  // Clear previous markers
+  exEditor.getAllMarks().forEach(m=>m.clear());
+  for(let i=0;i<exEditor.lineCount();i++){
+    exEditor.removeLineClass(i,'background','ex-unsupported-line');
+  }
+
+  lines.forEach((line, i)=>{
+    if(line.trim()==='' || line.trim().startsWith('#')) return;
+    for(const rule of UNSUPPORTED){
+      if(rule.re.test(line)){
+        unsupportedLines.push({lineNo:i+1, lineIdx:i, label:rule.label, msg:rule.msg, warn:rule.warn||false});
+        if(!rule.warn) exEditor.addLineClass(i,'background','ex-unsupported-line');
+        break;
+      }
+    }
+  });
+
+  renderWarnings();
+}
+
+function renderWarnings(){
+  const banner = document.getElementById('warnBanner');
+  const linesEl = document.getElementById('warnLines');
+  if(unsupportedLines.length === 0){ banner.classList.remove('on'); return; }
+  banner.classList.add('on');
+  linesEl.innerHTML = unsupportedLines.map(u=>{
+    const badgeStyle = u.warn
+      ? 'background:rgba(0,206,201,.15);color:var(--teal);border:1px solid rgba(0,206,201,.3);'
+      : 'background:rgba(255,95,116,.15);color:var(--red);border:1px solid rgba(255,95,116,.25);';
+    const labelColor = u.warn ? 'var(--teal)' : 'var(--red)';
+    return `<div class="warn-line">
+      <span class="warn-badge" style="${badgeStyle}">Line ${u.lineNo}</span>
+      <span style="color:${labelColor};font-family:var(--mono);font-size:10.5px;">${esc(u.label)}</span>
+      <span style="color:var(--text3);font-size:10.5px;">— ${esc(u.msg)}</span>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Speed control ─────────────────────────────────────────
+let stepDelayMs = 1000;
+function updateSpeed(){
+  const v = parseInt(document.getElementById('speedSlider').value);
+  // 1→2000ms, 10→150ms
+  stepDelayMs = Math.round(2000 - (v-1)*(2000-150)/9);
+  const secs = (stepDelayMs/1000).toFixed(1);
+  document.getElementById('speedLabel').textContent = secs+'s';
+}
+
+// ── Step engine ───────────────────────────────────────────
+let stepState   = null;  // null = not running
+let autoTimer   = null;
+let isPlaying   = false;
+let stepMarkers = [];    // CodeMirror line markers
+let stepCount   = 0;
+
+function resetExplainer(){
+  clearTimeout(autoTimer);
+  isPlaying = false;
+  stepState = null;
+  stepCount = 0;
+  stepMarkers.forEach(m=>m.clear());
+  stepMarkers = [];
+  // Remove step highlights
+  for(let i=0;i<exEditor.lineCount();i++){
+    exEditor.removeLineClass(i,'background','ex-step-line');
+  }
+  document.getElementById('stepIdle').style.display='flex';
+  // Remove all step cards
+  document.querySelectorAll('.step-card').forEach(c=>c.remove());
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('varsGrid').innerHTML='<span class="vars-empty">No variables yet</span>';
+  document.getElementById('fullOutputArea').innerHTML='<div class="fo-empty">Run code to see full output</div>';
+  document.getElementById('btnStep').disabled = true;
+  document.getElementById('btnReset').disabled = true;
+  setPlayBtn(false);
+}
+
+function initStepState(){
+  const code = exEditor.getValue();
+  const unsupportedSet = new Set(unsupportedLines.map(u=>u.lineIdx));
+  if(!window.LoopLogic){
+    alert('looplogic.js not loaded');
+    return null;
+  }
+  return LoopLogic.compile(code, unsupportedSet);
+}
+
+function togglePlay(){
+  if(!stepState){
+    stepState = initStepState();
+    if(!stepState) return;
+    document.getElementById('stepIdle').style.display='none';
+    document.getElementById('btnStep').disabled = false;
+    document.getElementById('btnReset').disabled = false;
+  }
+  if(isPlaying){
+    // Pause
+    clearTimeout(autoTimer);
+    isPlaying = false;
+    setPlayBtn(false);
+  } else {
+    isPlaying = true;
+    setPlayBtn(true);
+    scheduleNext();
+  }
+}
+
+function scheduleNext(){
+  if(!isPlaying) return;
+  autoTimer = setTimeout(()=>{
+    const done = stepOnce();
+    if(!done) scheduleNext();
+    else { isPlaying=false; setPlayBtn(false); }
+  }, stepDelayMs);
+}
+
+function setPlayBtn(playing){
+  const icon = document.getElementById('playIcon');
+  document.getElementById('playLabel').textContent = playing ? 'Pause' : (stepState ? 'Resume' : 'Run');
+  icon.innerHTML = playing
+    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+    : '<polygon points="5 3 19 12 5 21 5 3"/>';
+}
+
+// Returns true if finished
+function stepOnce(){
+  if(!stepState){
+    stepState = initStepState();
+    if(!stepState) return true;
+    document.getElementById('stepIdle').style.display='none';
+    document.getElementById('btnStep').disabled=false;
+    document.getElementById('btnReset').disabled=false;
+  }
+
+  const result = LoopLogic.step(stepState);
+  if(!result || result.done){
+    appendCard({
+      lineNo:'—', code:'', explain:'✓ Execution complete.',
+      output:'', type:'done'
+    }, stepState);
+    document.getElementById('progressFill').style.width='100%';
+    document.getElementById('btnStep').disabled=true;
+    clearTimeout(autoTimer);
+    isPlaying=false;
+    setPlayBtn(false);
+    return true;
+  }
+
+  // Highlight current line
+  stepMarkers.forEach(m=>m.clear());
+  stepMarkers=[];
+  for(let i=0;i<exEditor.lineCount();i++) exEditor.removeLineClass(i,'background','ex-step-line');
+  exEditor.addLineClass(result.lineIdx,'background','ex-step-line');
+  exEditor.scrollIntoView({line:result.lineIdx,ch:0},60);
+
+  // Update progress
+  const total = stepState.totalLines || 1;
+  document.getElementById('progressFill').style.width=(result.lineIdx/total*100)+'%';
+
+  appendCard(result, stepState);
+  renderVars(stepState.env);
+  stepCount++;
+  return false;
+}
+
+function appendCard(result, state){
+  const area = document.getElementById('stepArea');
+  // Remove idle
+  document.getElementById('stepIdle').style.display='none';
+
+  const card = document.createElement('div');
+  card.className='step-card active';
+  // De-highlight previous cards
+  area.querySelectorAll('.step-card').forEach(c=>c.classList.remove('active'));
+
+  let bodyHtml='';
+  if(result.type==='done'){
+    bodyHtml=`<div class="step-explain" style="color:var(--green)">✓ All lines executed.</div>`;
+  } else if(result.type==='skipped'){
+    bodyHtml=`
+      <div class="step-code">${esc(result.code)}</div>
+      <div class="step-skipped">⚠ Skipped — ${esc(result.explain)}</div>`;
+  } else {
+    bodyHtml=`
+      <div class="step-code">${esc(result.code)}</div>
+      <div class="step-explain">${esc(result.explain)}</div>
+      ${result.output!==undefined && result.output!=='' ? `<div class="step-output">▶ ${esc(result.output)}</div>`:''}`;
+  }
+
+  card.innerHTML=`
+    <div class="step-card-head">
+      ${result.type!=='done'?`<span class="step-num">${stepCount+1}</span>`:''}
+      ${result.lineNo!=='—'&&result.type!=='done'?`Line ${result.lineNo}`:''}
+    </div>
+    <div class="step-card-body">${bodyHtml}</div>`;
+  area.appendChild(card);
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // Keep full output in sync
+  if(outputMode === 'full' && state) renderFullOutput(state);
+}
+
+function renderVars(env){
+  const grid = document.getElementById('varsGrid');
+  if(!env || Object.keys(env).length===0){
+    grid.innerHTML='<span class="vars-empty">No variables yet</span>';
+    return;
+  }
+  grid.innerHTML = Object.entries(env).map(([k,v])=>`
+    <div class="var-chip">
+      <span class="var-name">${esc(k)}</span>
+      <span class="var-eq">=</span>
+      <span class="var-val">${esc(reprVal(v))}</span>
+    </div>`).join('');
+}
+
+function reprVal(v){
+  if(v===null) return 'None';
+  if(typeof v==='string') return `"${v}"`;
+  if(Array.isArray(v)) return '['+v.map(reprVal).join(', ')+']';
+  if(typeof v==='object') return '{'+Object.entries(v).map(([k,val])=>`${reprVal(k)}: ${reprVal(val)}`).join(', ')+'}';
+  return String(v);
+}
+</script>
+</body>
+</html>
