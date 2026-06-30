@@ -60,6 +60,22 @@ Tweak the IDE from the ⚙ Settings panel:
 
 ---
 
+## Limitations
+
+Worth knowing before you rely on it for anything serious:
+
+- **Single browser, single device.** Workspace state (files, folders, tabs) is saved to `localStorage` only. Clearing browser data wipes your work, and there's no sync between browsers or devices, switching machines means starting from a blank workspace.
+- **No real Python runtime.** Code execution is powered by [Brython](https://brython.info/), a Python-to-JS transpiler, not CPython. It covers most of the language and standard library well, but isn't a byte-for-byte match to CPython behavior, and packages requiring native code (`numpy`, `pandas`, `matplotlib`, etc.) simply can't run.
+- **No file I/O or networking.** Code can't read/write real files on disk or make network requests; everything happens inside the browser sandbox.
+- **The Loop Explainer is a separate, much smaller interpreter.** It's a hand-built JS step-through engine, not Brython, so it only understands a basic subset of Python (variables, `print()`, `if`/`elif`/`else`, `for`/`while` loops, arithmetic). Functions, classes, imports, try/except, comprehensions, and generators are detected and skipped rather than executed, the editor will flag these lines as unsupported.
+- **No real-time collaboration.** PyBolt is single-user and single-tab by design. There's no multiplayer editing or shared sessions.
+- **Stop doesn't truly interrupt execution.** Brython runs synchronously, so the Stop button can only flag a run as halted after the current statement finishes, it can't kill a genuine infinite loop mid-execution.
+- **Autocomplete is heuristic, not semantic.** Suggestions come from keyword/snippet lists and a regex scan of your file for variable, function, and class names. It doesn't understand scope, types, or imported module contents.
+- **No version history.** There's no undo beyond your browser's in-session history, and no automatic backups, downloading your files is the only durable backup.
+- **No accounts, so no backup if local storage is lost.** Since there's no server and no login, the only way to preserve work long-term is to manually download each file you care about.
+
+---
+
 ## On mobile
 
 PyBolt IDE is designed for desktop. If you open it on a phone, you'll see a button to launch **Loop Explainer Lite**, a mobile-friendly version of the Explainer that fits a small screen, with a collapsible code panel, touch-friendly controls, and a slide-up variables panel.
