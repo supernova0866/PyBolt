@@ -14,6 +14,10 @@ A full code editor with syntax highlighting, bracket matching, auto-close for `(
 ### Run it
 Hit **Run** or `Ctrl+Enter`. Python executes right in the browser, powered by Brython. Output appears instantly in the panel below. First run takes a few extra seconds while the runtime warms up; every run after is fast.
 
+**Supported:** variables, loops, conditionals, functions, classes, list/dict/set/tuple, f-strings, slicing, most builtins (`len`, `range`, `print`, `input`, `sorted`, `enumerate`, `zip`, `map`, `filter`, and more), `math`, `random`, `json`, `datetime`, `functools`, `collections`, and other standard library modules.
+
+**Not supported:** file I/O, networking, `numpy`, `pandas`, `matplotlib`, or any package that requires native code.
+
 ### Organise your work
 Create multiple files and folders, drag files between them, rename, duplicate, and move them with a right-click menu. Closing a tab doesn't delete the file, it stays in the explorer.
 
@@ -68,10 +72,6 @@ Any modern browser. Chrome, Firefox, Safari, Edge. No extensions, no plugins, no
 
 Python support is provided by [Brython](https://brython.info/). The editor is [CodeMirror 5](https://codemirror.net/).
 
-**Supported:** variables, loops, conditionals, functions, classes, list/dict/set/tuple, f-strings, slicing, most builtins (`len`, `range`, `print`, `input`, `sorted`, `enumerate`, `zip`, `map`, `filter`, and more), `math`, `random`, `json`, `datetime`, `functools`, `collections`, and other standard library modules.
-
-**Not supported:** file I/O, networking, `numpy`, `pandas`, `matplotlib`, or any package that requires native code.
-
 ---
 
 ## Credits
@@ -81,12 +81,12 @@ Python support is provided by [Brython](https://brython.info/). The editor is [C
 - **[JetBrains Mono](https://www.jetbrains.com/legalforms/fonts/)** - editor font (OFL License)
 - **[Syne](https://fonts.google.com/specimen/Syne)** - UI font (OFL License)
 
----
-
 ## License
 
-(c) 2026 supernova0866. All rights reserved.
+Licensed under **Proprietary** - **All Rights Reserved**. See [`LICENSE`](https://github.com/supernova0866/PyBolt/blob/main/LICENSE) for full terms.
 
-Source code is visible for learning and reference purposes. Redistribution, modification, or republishing of this project in whole or in part, with or without modification, is not permitted without explicit written permission from the author.
+---
 
-See [`LICENSE`](https://github.com/supernova0866/PyBolt/blob/main/LICENSE) for full terms.
+*Live app: [PyBolt](https://supernova0866.github.io/PyBolt/)*
+
+*Built with ♡ by [Nova](https://supernova0866.github.io/Lore/)*
